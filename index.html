@@ -13,7 +13,7 @@ body{font-family:'Inter',sans-serif;background:#f8f8f6;color:#1c1c1c;font-size:1
 input[type=range]{accent-color:#1c1c1c}
 input[type=color]{accent-color:#1c1c1c}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#f8f8f6}::-webkit-scrollbar-thumb{background:#d3d1cb;border-radius:10px}
-#app{display:flex;height:100vh;overflow:hidden}
+#app{display:none;height:100vh;overflow:hidden}
 #sidebar{width:236px;min-width:236px;background:var(--nav-bg);border-right:1px solid var(--nav-border);display:flex;flex-direction:column}
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 
@@ -283,19 +283,19 @@ try{
   }
 }catch(e){console.warn('Supabase client failed to initialize; running in local demo-data mode.',e);}
 
-async function fetchClientPortal(portalCode){
+async function fetchClientPortal(portalCode,pin){
   if(!sb)return null;
   try{
-    const{data,error}=await sb.rpc('get_client_portal',{p_portal_code:portalCode});
+    const{data,error}=await sb.rpc('get_client_portal',{p_portal_code:portalCode,p_pin:pin});
     if(error){console.warn('get_client_portal error, falling back to local demo data:',error);return null;}
-    if(!data||data.error){console.warn('get_client_portal returned no match for portal code:',portalCode);return null;}
+    if(!data||data.error){console.warn('get_client_portal returned no match for portal code / pin:',portalCode);return null;}
     return data;
   }catch(e){console.warn('Supabase unreachable, falling back to local demo data:',e);return null;}
 }
-async function markTaskDoneRemote(portalCode,taskId){
+async function markTaskDoneRemote(portalCode,pin,taskId){
   if(!sb)return null;
   try{
-    const{data,error}=await sb.rpc('mark_task_done',{p_portal_code:portalCode,p_task_id:taskId});
+    const{data,error}=await sb.rpc('mark_task_done',{p_portal_code:portalCode,p_pin:pin,p_task_id:taskId});
     if(error){console.warn('mark_task_done error:',error);return null;}
     return data;
   }catch(e){console.warn('Supabase unreachable for mark_task_done:',e);return null;}
@@ -319,9 +319,16 @@ function applyLivePortalData(c,live){
   c._liveVendors=(live.vendors||[]).map(v=>({id:v.id,name:v.name,trade:v.trade,phone:v.phone,email:v.email,website:v.website,note:v.note}));
   c._live=true;
 }
-async function loadLiveClientData(id){
+// Verifies portalCode+pin locally against demo data. This is what keeps
+// the app testable before Supabase is live — once connected, the RPC
+// call above is the real (server-side) check; this is only a fallback.
+function localPinCheck(portalCode,pin){
+  const c=DB.clients.find(x=>x.portalCode===portalCode);
+  return c&&String(c.pin)===String(pin)?c:null;
+}
+async function loadLiveClientData(id,pin){
   const c=gC(id);if(!c)return false;
-  const live=await fetchClientPortal(c.portalCode);
+  const live=await fetchClientPortal(c.portalCode,pin);
   if(live){applyLivePortalData(c,live);return true;}
   c._live=false;return false;
 }
@@ -361,7 +368,7 @@ const DB = {
   clients:[
     {
       id:1,name:"Miller, James",address:"412 Oakwood Drive, Springfield MO 65807",phone:"(417) 555-0142",email:"james.miller@email.com",
-      portalCode:"miller-james",emailRemindDays:7,avatarBg:"#eeeeec",avatarColor:"#1c1c1c",vendorIds:[1,2,3,6],
+      portalCode:"miller-james",pin:"7042",emailRemindDays:7,avatarBg:"#eeeeec",avatarColor:"#1c1c1c",vendorIds:[1,2,3,6],
       tasks:[
         {id:1,name:"Whole-house filter change",icon:"droplet",freqDays:90,nextDue:dFN(6),history:["Jan 15, 2026","Oct 18, 2025","Jul 22, 2025"],
           link:{name:"Whole House Filter — 20×25×4 (2-pack)",url:"https://www.amazon.com/dp/B00ND7EQV0",store:"Amazon"}},
@@ -404,7 +411,7 @@ const DB = {
     },
     {
       id:2,name:"Santos, Rosa",address:"78 Maple Avenue, Springfield MO 65804",phone:"(417) 555-0198",email:"rosa.santos@email.com",
-      portalCode:"santos-rosa",emailRemindDays:5,avatarBg:"#eef1e8",avatarColor:"#4c6b3f",vendorIds:[1,5],
+      portalCode:"santos-rosa",pin:"3319",emailRemindDays:5,avatarBg:"#eef1e8",avatarColor:"#4c6b3f",vendorIds:[1,5],
       tasks:[
         {id:1,name:"Gutter cleaning",icon:"leaf",freqDays:180,nextDue:dFN(19),history:["Nov 20, 2025"],link:null},
         {id:2,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(45),history:["Feb 14, 2026"],
@@ -431,7 +438,7 @@ const DB = {
     },
     {
       id:3,name:"Chen, Patricia",address:"9 Birch Lane, Springfield MO 65802",phone:"(417) 555-0271",email:"patricia.chen@email.com",
-      portalCode:"chen-patricia",emailRemindDays:3,avatarBg:"#f6f0e3",avatarColor:"#8a6a2e",vendorIds:[1,3],
+      portalCode:"chen-patricia",pin:"8156",emailRemindDays:3,avatarBg:"#f6f0e3",avatarColor:"#8a6a2e",vendorIds:[1,3],
       tasks:[
         {id:1,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(-5),history:["Feb 24, 2026"],
           link:{name:"HVAC Filter — 14×18×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
@@ -450,7 +457,7 @@ const DB = {
     },
     {
       id:4,name:"Thompson, Will",address:"3301 Cedar Blvd, Springfield MO 65810",phone:"(417) 555-0344",email:"will.thompson@email.com",
-      portalCode:"thompson-will",emailRemindDays:7,avatarBg:"#eceaf0",avatarColor:"#55508a",vendorIds:[1],
+      portalCode:"thompson-will",pin:"2984",emailRemindDays:7,avatarBg:"#eceaf0",avatarColor:"#55508a",vendorIds:[1],
       tasks:[
         {id:1,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(40),history:["Mar 1, 2026"],
           link:{name:"HVAC Filter — 20×20×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
@@ -498,6 +505,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
   <div class="sb-footer">
     <div style="font-size:11px;font-weight:700;color:#1c1c1c">Mitchell Construction & Design</div>
     <div class="sb-tagline">"Building an Elevated Experience"</div>
+    <div id="sb-signout" style="margin-top:8px;font-size:11px;color:#9c968a;cursor:pointer;font-weight:600" onclick="doLogout()">Sign out</div>
   </div>
 </div>
 
@@ -528,6 +536,31 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
 
 <div id="print-area"></div>
 
+<div id="login-screen" style="display:none;position:fixed;inset:0;background:#f8f8f6;z-index:999;align-items:center;justify-content:center">
+  <div style="max-width:360px;width:90%;padding:32px;background:#fff;border:1px solid #e8e6e1;border-radius:16px;text-align:center;box-shadow:0 10px 30px rgba(20,20,18,.08)">
+    <div style="width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;margin:0 auto 16px">M</div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:3px">Staff Sign In</div>
+    <div style="font-size:12px;color:#8f8d86;margin-bottom:22px">Mitchell Home Care Portal — Admin</div>
+    <div class="fg" style="text-align:left"><label class="fl">Email</label><input class="fi" id="login-email" type="email" placeholder="you@mitchellconstructionco.net" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="fg" style="text-align:left"><label class="fl">Password</label><input class="fi" id="login-pw" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div id="login-error" style="color:#9a3b3b;font-size:12px;margin-bottom:10px;display:none;text-align:left"></div>
+    <button class="btn btn-blk" style="width:100%;justify-content:center" onclick="doLogin()">Sign In</button>
+    <div style="font-size:11px;color:#8f8d86;margin-top:16px">Accounts are created by an admin in the Supabase dashboard — there's no self sign-up here.</div>
+  </div>
+</div>
+
+<div id="pin-screen" style="display:none;position:fixed;inset:0;background:#f8f8f6;z-index:999;align-items:center;justify-content:center">
+  <div style="max-width:360px;width:90%;padding:32px;background:#fff;border:1px solid #e8e6e1;border-radius:16px;text-align:center;box-shadow:0 10px 30px rgba(20,20,18,.08)">
+    <div style="width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;margin:0 auto 16px">M</div>
+    <div style="font-size:15px;font-weight:800;margin-bottom:3px">Enter Your Access PIN</div>
+    <div style="font-size:12px;color:#8f8d86;margin-bottom:22px">Mitchell Home Care Portal</div>
+    <div class="fg" style="text-align:left"><label class="fl">4-digit PIN</label><input class="fi" id="pin-input" type="tel" inputmode="numeric" maxlength="6" placeholder="••••" style="letter-spacing:.3em;font-size:18px;text-align:center" onkeydown="if(event.key==='Enter')submitPin()"></div>
+    <div id="pin-error" style="color:#9a3b3b;font-size:12px;margin-bottom:10px;display:none;text-align:left"></div>
+    <button class="btn btn-blk" style="width:100%;justify-content:center" onclick="submitPin()">Continue</button>
+    <div style="font-size:11px;color:#8f8d86;margin-top:16px">This PIN was printed on the label or card from Mitchell Construction &amp; Design. Don't have it? Contact us.</div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)cM()">
   <div class="modal" id="modal-inner"></div>
 </div>
@@ -547,26 +580,90 @@ function rLogo(){
   }
 }
 let clientOnlyMode=false;
-async function initClientOnlyMode(code){
+let pendingPortalCode=null;
+function initClientOnlyMode(code){
   clientOnlyMode=true;
+  pendingPortalCode=code;
   document.getElementById('sidebar').querySelector('#adm-nav').style.display='none';
   document.getElementById('topbar').style.display='none';
-  const shell={id:'remote',name:'',address:'',phone:'',email:'',portalCode:code,emailRemindDays:5,tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[],notes:'',status:'Active'};
+  document.getElementById('cli-nav').style.display='block';
+  document.getElementById('pin-screen').style.display='flex';
+  document.getElementById('pin-input').focus();
+}
+async function submitPin(){
+  const code=pendingPortalCode;
+  const pin=document.getElementById('pin-input').value.trim();
+  const errEl=document.getElementById('pin-error');
+  errEl.style.display='none';
+  if(!/^\d{4,6}$/.test(pin)){errEl.textContent='Enter the PIN printed on your label or card.';errEl.style.display='block';return;}
+
+  const shell={id:'remote',name:'',address:'',phone:'',email:'',portalCode:code,pin,emailRemindDays:5,tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[],notes:'',status:'Active'};
+  let ok=false;
+
+  if(sb){
+    const live=await fetchClientPortal(code,pin);
+    if(live){applyLivePortalData(shell,live);shell._pin=pin;ok=true;}
+  }
+  if(!ok){
+    // Supabase unreachable or not yet connected — verify against local demo data instead,
+    // so the PIN gate is fully testable before Supabase is live.
+    const localMatch=localPinCheck(code,pin);
+    if(localMatch){Object.assign(shell,JSON.parse(JSON.stringify(localMatch)));shell._pin=pin;ok=true;}
+  }
+
+  if(!ok){errEl.textContent='Incorrect PIN. Please try again or contact us.';errEl.style.display='block';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
+
   DB.clients.push(shell);
   cid=shell.id;view='client';
-  document.getElementById('cli-nav').style.display='block';
-  const ok=await loadLiveClientData(shell.id);
-  if(!ok){
-    document.body.innerHTML='<div style="max-width:420px;margin:80px auto;text-align:center;font-family:\'Inter\',sans-serif;color:#4a4a46;padding:0 20px"><div style="font-size:15px;font-weight:800;margin-bottom:8px">We couldn\'t find that portal link</div><div style="font-size:13px;color:#8f8d86">Double check the link, or contact Mitchell Construction &amp; Design if you think this is a mistake.</div></div>';
-    return;
-  }
+  document.getElementById('pin-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
   gP('portal');rPortal(shell.id);sPT('home');
 }
-window.onload=()=>{
+function initAdminApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='flex';
+  document.getElementById('sb-signout').style.display=sb?'block':'none';
   applyBrandingVars();rLogo();
-  const portalCode=new URLSearchParams(location.search).get('portal');
-  if(portalCode){initClientOnlyMode(portalCode);return;}
   rSB();rDB();rEM();rVND();rSET();setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
+}
+function showLoginScreen(){
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-email').focus();
+}
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-pw').value;
+  const errEl=document.getElementById('login-error');
+  errEl.style.display='none';
+  if(!email||!pw){errEl.textContent='Enter both email and password.';errEl.style.display='block';return;}
+  if(!sb){errEl.textContent='Supabase isn\'t connected in this session — check your internet connection and reload.';errEl.style.display='block';return;}
+  const{error}=await sb.auth.signInWithPassword({email,password:pw});
+  if(error){errEl.textContent=error.message||'Sign-in failed. Check your email and password.';errEl.style.display='block';return;}
+  // onAuthStateChange (below) picks up the SIGNED_IN event and calls initAdminApp()
+}
+async function doLogout(){
+  if(sb)await sb.auth.signOut();
+  else showLoginScreen();
+}
+async function checkAdminAuth(){
+  if(!sb){
+    // Supabase not reachable/connected — run in local demo mode, no login required.
+    initAdminApp();
+    return;
+  }
+  const{data:{session}}=await sb.auth.getSession();
+  if(session)initAdminApp();
+  else showLoginScreen();
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='SIGNED_IN')initAdminApp();
+    if(event==='SIGNED_OUT')showLoginScreen();
+  });
+}
+window.onload=()=>{
+  const portalCode=new URLSearchParams(location.search).get('portal');
+  if(portalCode){document.getElementById('login-screen').style.display='none';initClientOnlyMode(portalCode);return;}
+  checkAdminAuth();
 };
 function setTB(t,s,a){document.getElementById('tb-title').textContent=t;document.getElementById('tb-sub').textContent=s;document.getElementById('tb-act').innerHTML=a||''}
 function gP(p){
@@ -593,7 +690,7 @@ function setView(v){
     ptab='home';gP('portal');sPT('home');
     const c=gC(cid),fn=c.name.split(',')[1]?.trim()||c.name;
     setTB('Previewing as Client',`This is what ${fn} sees when they log in`,`<button class="btn btn-blk btn-sm" onclick="setView('admin')">${ic('arrowleft',12)} Back to Admin</button>`);
-    loadLiveClientData(cid).then(()=>{if(view==='client'){rPortal(cid);rPB(cid,ptab);}});
+    loadLiveClientData(cid,c.pin).then(()=>{if(view==='client'){rPortal(cid);rPB(cid,ptab);}});
     rPortal(cid);
   }
   else{rCDet(cid);gP('client-detail');setTB(gC(cid).name,gC(cid).address,`<button class="btn btn-tan btn-sm" onclick="setView('client')">${ic('eye',12)} Client View</button> <button class="btn btn-sm" onclick="printRecord(${cid})">${ic('printer',12)} Print Record</button> <button class="btn btn-blk btn-sm" onclick="oAddTask()">${ic('plus',12)} Add Task</button>`);}
@@ -1015,9 +1112,12 @@ function rCDB(id,tab){
         </div>
       </div>
       <div class="card"><div class="card-hd">${ic('link',13)} Client Portal Link</div>
-        <div style="font-size:12px;color:#8f8d86;margin-bottom:8px">Share this unique link — no login needed. Works on any device.</div>
+        <div style="font-size:12px;color:#8f8d86;margin-bottom:8px">Share this link plus the PIN below — the client needs both to get in.</div>
         <div class="fg"><label class="fl">Portal code</label><input class="fi" value="${c.portalCode}" onchange="gC(${id}).portalCode=this.value;document.getElementById('plnk').textContent='mitchell-homecare.com/portal/'+this.value"></div>
         <div class="link-copy"><span class="link-code" id="plnk">mitchell-homecare.com/portal/${c.portalCode}</span><button class="btn btn-sm" onclick="navigator.clipboard.writeText('https://mitchell-homecare.com/portal/${c.portalCode}').then(()=>this.textContent='Copied!').catch(()=>alert('Copy failed'))">Copy</button></div>
+        <div class="fg" style="margin-top:14px"><label class="fl">Access PIN</label>
+          <div style="display:flex;gap:8px"><input class="fi" id="pin-field-${id}" value="${c.pin||''}" maxlength="6" style="letter-spacing:.2em;font-weight:700" onchange="gC(${id}).pin=this.value.trim()"><button class="btn btn-sm" onclick="regenPin(${id})">Regenerate</button></div>
+        </div>
         <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="printRecord(${id})">${ic('printer',12)} Print Full Maintenance Record</button>
           <button class="btn btn-sm" onclick="printQRLabel(${id})">${ic('qr',12)} Print QR Label (4×6)</button>
@@ -1111,7 +1211,8 @@ function markDone(cid2,tid,isPortal){
   const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);if(!t)return;
   cM();
   if(isPortal&&c._live){
-    markTaskDoneRemote(c.portalCode,tid).then(result=>{
+    const pinToUse=c._pin||c.pin;
+    markTaskDoneRemote(c.portalCode,pinToUse,tid).then(result=>{
       if(result&&result.success){
         if(!t.history)t.history=[];
         t.history.unshift(now());
@@ -1434,8 +1535,12 @@ function printQRLabel(id){
       <div style="width:30px;height:30px;border:1.5px solid #1c1c1c;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#1c1c1c;margin-bottom:10px;flex-shrink:0">M</div>
       <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1c1c1c">${DB.companySettings.companyName}</div>
       <div style="font-size:9px;color:#8f8d86;margin-top:2px;margin-bottom:20px">Home Care Portal</div>
-      <div style="border:1px solid #e8e6e1;border-radius:10px;padding:10px;background:#fff;width:2.7in;height:2.7in;display:flex;align-items:center;justify-content:center;flex-shrink:0">${qrSvg}</div>
-      <div style="font-size:11px;color:#8f8d86;margin-top:20px;line-height:1.5">Scan to view your home's maintenance<br>schedule, warranties &amp; more</div>
+      <div style="border:1px solid #e8e6e1;border-radius:10px;padding:10px;background:#fff;width:2.5in;height:2.5in;display:flex;align-items:center;justify-content:center;flex-shrink:0">${qrSvg}</div>
+      <div style="margin-top:20px;padding:10px 22px;border:1.5px solid #1c1c1c;border-radius:10px">
+        <div style="font-size:8.5px;color:#8f8d86;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Access PIN</div>
+        <div style="font-size:22px;font-weight:800;color:#1c1c1c;letter-spacing:.15em">${c.pin||'— — — —'}</div>
+      </div>
+      <div style="font-size:11px;color:#8f8d86;margin-top:16px;line-height:1.5">Scan the code, then enter the PIN above<br>to view your home's maintenance schedule</div>
     </div>`;
   alert('Before printing: in the print dialog, set "Paper size" to 4 x 6 in (or Custom, 4in by 6in). If it stays on Letter or A4, the label will print small and off-center instead of filling the label.');
   window.print();
@@ -1446,6 +1551,7 @@ function printQRLabel(id){
 // DATA MUTATIONS
 // ═══════════════════════════════════════════
 function delT(cid2,tid){const c=gC(cid2);c.tasks=c.tasks.filter(t=>t.id!==tid);rCDB(cid2,'tasks');rPortal(cid2);rDB();}
+function regenPin(cid2){const c=gC(cid2);c.pin=String(Math.floor(1000+Math.random()*9000));rCDB(cid2,'settings');}
 function delL(cid2,lid){const c=gC(cid2);c.links=c.links.filter(l=>l.id!==lid);rCDB(cid2,'links');}
 function toggleClientVendor(cid2,vid){const c=gC(cid2);if(!c.vendorIds)c.vendorIds=[];const i=c.vendorIds.indexOf(vid);if(i>-1)c.vendorIds.splice(i,1);else c.vendorIds.push(vid);rCDB(cid2,'vendors');}
 function delP(cid2,i){const c=gC(cid2);c.paints.splice(i,1);rCDB(cid2,'paint');}
