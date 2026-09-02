@@ -15,6 +15,7 @@ input[type=color]{accent-color:#1c1c1c}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#f8f8f6}::-webkit-scrollbar-thumb{background:#d3d1cb;border-radius:10px}
 #app{display:none;height:100vh;overflow:hidden}
 #sidebar{width:236px;min-width:236px;background:var(--nav-bg);border-right:1px solid var(--nav-border);display:flex;flex-direction:column}
+#adm-nav,#cli-nav{flex:1;overflow-y:auto}
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 
 .logo-wrap{padding:20px 20px 15px;border-bottom:1px solid var(--nav-border);display:flex;align-items:center;min-height:24px}
@@ -255,6 +256,11 @@ function freqPicker(numId,unitId,days){
   </div>`;
 }
 // Amazon affiliate tagging — appends the configured Associates tag to any Amazon link automatically
+function portalUrl(portalCode){
+  const base=(DB.companySettings.portalBaseUrl||'').trim().replace(/\/$/,'');
+  if(!base)return null;
+  return `${base}/?portal=${encodeURIComponent(portalCode)}`;
+}
 function affUrl(url,store){
   if(!url)return'#';
   const tag=(DB.companySettings.amazonTag||'').trim();
@@ -346,6 +352,12 @@ const DB = {
     phone:"417.322.6789",
     amazonTag:"mitchellcd-20",
     builderTrendUrl:"",
+    portalBaseUrl:"",
+    fromName:"Mitchell Construction & Design",
+    fromEmail:"",
+    headsUpDays:7,
+    overdueRepeatDays:7,
+    monthlyRecapDay:1,
     logoDataUrl:null,
     logoSizePct:100,
     programColor:"#9c968a",
@@ -357,123 +369,8 @@ const DB = {
     ]
   },
   vendorTrades:["HVAC","Plumbing","Pest Control","Electrical","Roofing","Chimney","General"],
-  vendors:[
-    {id:1,name:"Aire Serv of Springfield",trade:"HVAC",phone:"(417) 555-1100",email:"info@aireserv-sgf.com",note:"Preferred partner — 10% discount for MC&D clients",website:"https://www.aireserv.com"},
-    {id:2,name:"Roto-Rooter Springfield",trade:"Plumbing",phone:"(417) 555-2200",email:"sgf@rotorooter.com",note:"24/7 emergency service available",website:""},
-    {id:3,name:"Ozark Pest Solutions",trade:"Pest Control",phone:"(417) 555-3300",email:"hello@ozarkpest.com",note:"Quarterly service plans available",website:""},
-    {id:4,name:"Springfield Electric Co.",trade:"Electrical",phone:"(417) 555-4400",email:"service@sgfelectric.com",note:"Licensed & bonded",website:""},
-    {id:5,name:"All-Pro Roofing",trade:"Roofing",phone:"(417) 555-5500",email:"quotes@allproof.com",note:"GAF certified installer",website:""},
-    {id:6,name:"Clean Sweep Chimney",trade:"Chimney",phone:"(417) 555-6600",email:"sweep@cleanchimney.com",note:"Annual inspections & sweeping",website:""},
-  ],
-  clients:[
-    {
-      id:1,name:"Miller, James",address:"412 Oakwood Drive, Springfield MO 65807",phone:"(417) 555-0142",email:"james.miller@email.com",
-      portalCode:"miller-james",pin:"7042",emailRemindDays:7,avatarBg:"#eeeeec",avatarColor:"#1c1c1c",vendorIds:[1,2,3,6],
-      tasks:[
-        {id:1,name:"Whole-house filter change",icon:"droplet",freqDays:90,nextDue:dFN(6),history:["Jan 15, 2026","Oct 18, 2025","Jul 22, 2025"],
-          link:{name:"Whole House Filter — 20×25×4 (2-pack)",url:"https://www.amazon.com/dp/B00ND7EQV0",store:"Amazon"}},
-        {id:2,name:"Refrigerator water filter",icon:"droplet",freqDays:180,nextDue:dFN(45),history:["Nov 2, 2025"],
-          link:{name:"Samsung Refrigerator Water Filter (DA29-00020B)",url:"https://www.amazon.com/dp/B0090WOFYE",store:"Amazon"}},
-        {id:3,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(6),history:["Jan 15, 2026","Oct 18, 2025"],
-          link:{name:"HVAC Filter — 20×25×1 (6-pack)",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
-        {id:4,name:"Water softener salt",icon:"box",freqDays:30,nextDue:dFN(2),history:["May 1, 2026","Apr 2, 2026"],
-          link:{name:"Morton Clean & Protect Salt (40 lb)",url:"https://www.homedepot.com/p/12345",store:"Home Depot"}},
-        {id:5,name:"Chimney inspection",icon:"flame",freqDays:365,nextDue:dFN(4),history:["Jun 5, 2025"],link:null},
-        {id:6,name:"Pest control",icon:"bug",freqDays:90,nextDue:dFN(61),history:["Mar 1, 2026"],link:null},
-        {id:7,name:"Dryer vent cleaning",icon:"wind",freqDays:365,nextDue:dFN(180),history:[],link:null},
-      ],
-      links:[
-        {id:1,name:"9V Batteries (smoke detectors)",note:"Energizer, 4-pack",url:"https://www.amazon.com/dp/B00E4L2NHW",store:"Amazon"},
-      ],
-      paints:[
-        {area:"Main walls",name:"SW 7015 Repose Gray",hex:"#E8DDD0",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},
-        {area:"Trim & doors",name:"SW 7012 Creamy",hex:"#F5F2EE",brand:"Sherwin-Williams",type:"Paint",sheen:"Semi-Gloss"},
-        {area:"Accent wall",name:"SW 6241 Krypton",hex:"#5B7FA6",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},
-        {area:"Front door",name:"Ipswich Pine 244",hex:"#5A3A28",brand:"Minwax",type:"Stain",sheen:"Semi-Transparent"},
-      ],
-      equipment:[
-        {id:1,category:"HVAC",name:"HVAC System",model:"Carrier 24ACC636A003",specs:[]},
-        {id:2,category:"Water Heater",name:"Water Heater",model:"Rheem PROG50-38N RH67",specs:[]},
-        {id:3,category:"Plumbing",name:"Whole-House Filter",model:"",specs:[{label:"Filter size",value:"20 × 25 × 4 in"}]},
-        {id:4,category:"Roofing",name:"Roof",model:"GAF Timberline HDZ",specs:[{label:"Installed",value:"2019"}]},
-        {id:5,category:"Electrical",name:"Electrical Panel",model:"200A Square D QO130L200PG",specs:[]},
-      ],
-      warranties:[
-        {id:1,item:"HVAC System",brand:"Carrier",expires:"2029-06-01",coverage:"10-yr parts, 1-yr labor",files:[]},
-        {id:2,item:"Roof",brand:"GAF",expires:"2044-08-15",coverage:"25-yr limited transferable",files:[{name:"GAF_Warranty_2019.pdf",size:"1.2 MB",uploaded:"Jun 1, 2026"}]},
-        {id:3,item:"Water Heater",brand:"Rheem",expires:"2029-03-01",coverage:"6-yr tank, 1-yr parts",files:[]},
-      ],
-      homeFiles:[
-        {id:1,name:"Final_Inspection_Report.pdf",size:"2.4 MB",category:"Inspection",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"},
-        {id:2,name:"Floor_Plan_As_Built.pdf",size:"4.1 MB",category:"Plans",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"},
-      ],
-      notes:"Gate code: 4421. Spare key under back porch planter. Dog named Biscuit — friendly.",
-    },
-    {
-      id:2,name:"Santos, Rosa",address:"78 Maple Avenue, Springfield MO 65804",phone:"(417) 555-0198",email:"rosa.santos@email.com",
-      portalCode:"santos-rosa",pin:"3319",emailRemindDays:5,avatarBg:"#eef1e8",avatarColor:"#4c6b3f",vendorIds:[1,5],
-      tasks:[
-        {id:1,name:"Gutter cleaning",icon:"leaf",freqDays:180,nextDue:dFN(19),history:["Nov 20, 2025"],link:null},
-        {id:2,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(45),history:["Feb 14, 2026"],
-          link:{name:"HVAC Filter — 16×20×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
-        {id:3,name:"Lawn fertilizer",icon:"leaf",freqDays:60,nextDue:dFN(40),history:["Apr 1, 2026"],
-          link:{name:"Scotts Turf Builder (Spring/Summer)",url:"https://www.homedepot.com/p/54321",store:"Home Depot"}},
-        {id:4,name:"Smoke detector test",icon:"bell",freqDays:180,nextDue:dFN(90),history:[],link:null},
-      ],
-      links:[],
-      paints:[
-        {area:"Exterior siding",name:"BM HC-172 Revere Pewter",hex:"#C2B89A",brand:"Benjamin Moore",type:"Paint",sheen:"Satin"},
-        {area:"Interior walls",name:"BM OC-17 White Dove",hex:"#F4F0E8",brand:"Benjamin Moore",type:"Paint",sheen:"Eggshell"},
-      ],
-      equipment:[
-        {id:1,category:"HVAC",name:"HVAC System",model:"Trane XR15 4TTR5036E1",specs:[{label:"Filter size",value:"16 × 20 × 1 in"}]},
-        {id:2,category:"Roofing",name:"Roof",model:"Owens Corning Duration",specs:[{label:"Installed",value:"2021"}]},
-      ],
-      warranties:[
-        {id:1,item:"HVAC System",brand:"Trane",expires:"2031-05-01",coverage:"10-yr parts & labor",files:[]},
-        {id:2,item:"Roof",brand:"Owens Corning",expires:"2046-04-01",coverage:"25-yr Platinum Protection",files:[]},
-      ],
-      homeFiles:[{id:1,name:"Project_Completion_Photos.jpg",size:"6.2 MB",category:"Photos",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"}],
-      notes:"Alarm code: 2-4-6-8. No pets.",
-    },
-    {
-      id:3,name:"Chen, Patricia",address:"9 Birch Lane, Springfield MO 65802",phone:"(417) 555-0271",email:"patricia.chen@email.com",
-      portalCode:"chen-patricia",pin:"8156",emailRemindDays:3,avatarBg:"#f6f0e3",avatarColor:"#8a6a2e",vendorIds:[1,3],
-      tasks:[
-        {id:1,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(-5),history:["Feb 24, 2026"],
-          link:{name:"HVAC Filter — 14×18×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
-        {id:2,name:"Pest control",icon:"bug",freqDays:90,nextDue:dFN(68),history:[],link:null},
-        {id:3,name:"Dryer vent cleaning",icon:"wind",freqDays:365,nextDue:dFN(165),history:[],link:null},
-      ],
-      links:[],
-      paints:[
-        {area:"Living room",name:"SW 7029 Agreeable Gray",hex:"#D4CCBF",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},
-        {area:"Kitchen",name:"SW 6119 Believable Buff",hex:"#D4C4A0",brand:"Sherwin-Williams",type:"Paint",sheen:"Satin"},
-      ],
-      equipment:[{id:1,category:"HVAC",name:"HVAC System",model:"Lennox XC21-036-230",specs:[{label:"Filter size",value:"14 × 18 × 1 in"}]}],
-      warranties:[{id:1,item:"HVAC System",brand:"Lennox",expires:"2032-01-15",coverage:"10-yr parts",files:[]}],
-      homeFiles:[],
-      notes:"Access code for side gate: 7890.",
-    },
-    {
-      id:4,name:"Thompson, Will",address:"3301 Cedar Blvd, Springfield MO 65810",phone:"(417) 555-0344",email:"will.thompson@email.com",
-      portalCode:"thompson-will",pin:"2984",emailRemindDays:7,avatarBg:"#eceaf0",avatarColor:"#55508a",vendorIds:[1],
-      tasks:[
-        {id:1,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(40),history:["Mar 1, 2026"],
-          link:{name:"HVAC Filter — 20×20×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
-        {id:2,name:"Irrigation system check",icon:"droplet",freqDays:180,nextDue:dFN(120),history:[],link:null},
-        {id:3,name:"Smoke detector test",icon:"bell",freqDays:180,nextDue:dFN(90),history:[],
-          link:{name:"9V Batteries (Energizer, 4-pack)",url:"https://www.amazon.com/dp/B00E4L2NHW",store:"Amazon"}},
-        {id:4,name:"Garage door lube",icon:"door",freqDays:365,nextDue:dFN(200),history:[],link:null},
-      ],
-      links:[],
-      paints:[{area:"Exterior",name:"SW 6119 Believable Buff",hex:"#D4C4A0",brand:"Sherwin-Williams",type:"Paint",sheen:"Satin"},{area:"Master BR",name:"SW 6258 Naval",hex:"#334E76",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},{area:"Deck",name:"Woodland Cedar",hex:"#7A4A2E",brand:"Cabot",type:"Stain",sheen:"Solid"}],
-      equipment:[{id:1,category:"HVAC",name:"HVAC System",model:"Goodman GSX160361",specs:[{label:"Filter size",value:"20 × 20 × 1 in"}]},{id:2,category:"Roofing",name:"Roof",model:"GAF Timberline HDZ",specs:[{label:"Installed",value:"2022"}]}],
-      warranties:[{id:1,item:"HVAC System",brand:"Goodman",expires:"2033-09-01",coverage:"Lifetime heat exchanger, 10-yr parts",files:[]},{id:2,item:"Roof",brand:"GAF",expires:"2047-06-01",coverage:"25-yr limited transferable",files:[]}],
-      homeFiles:[{id:1,name:"Building_Permit.pdf",size:"0.6 MB",category:"Permits",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"}],
-      notes:"Alarm code: 5-5-1-2. Two dogs — Milo and Penny.",
-    }
-  ]
+  vendors:[],
+  clients:[]
 };
 
 let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData={};
@@ -792,7 +689,7 @@ function prevEmail(cid2,tid){
       <div style="font-size:11px;color:#8f8d86;margin-bottom:10px"><strong>To:</strong> ${c.email} &nbsp; <strong>Subject:</strong> Reminder: ${t.name} is due ${fD(t.nextDue)}</div>
       <div>Hi <strong>${c.name.split(',')[1]?.trim()||c.name}</strong>,</div>
       <div style="margin-top:8px">Your <strong>${t.name}</strong> is due on <strong>${fD(t.nextDue)}</strong>.${t.link?` You can reorder what you need directly here — no need to remember the brand or size.`:''}</div>
-      <div style="margin:12px 0;background:#1c1c1c;color:#fff;padding:10px 18px;border-radius:9px;text-align:center;font-weight:700">mitchell-homecare.com/portal/${c.portalCode}</div>
+      <div style="margin:12px 0;background:#1c1c1c;color:#fff;padding:10px 18px;border-radius:9px;text-align:center;font-weight:700">${portalUrl(c.portalCode)||'[ Set your Portal Base URL in Company Settings ]'}</div>
       <div style="font-size:11px;color:#8f8d86;font-style:italic">— ${DB.companySettings.companyName}</div>
     </div>
     <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Close</button><button class="btn btn-blk btn-sm" onclick="alert('Connect email service to send.');cM()">Send Now</button></div>`);
@@ -869,6 +766,31 @@ function rSET(){
       </div>
     </div>
 
+    <div class="card" style="margin-bottom:16px;${s.portalBaseUrl?'':'border-color:#e0c088'}">
+      <div class="card-hd">${ic('link',13)} Portal Base URL</div>
+      <div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Where this app is actually hosted — the domain clients' links and QR codes point to. Every client link is built as <span style="font-family:monospace">[this URL]/?portal=their-code</span>. ${s.portalBaseUrl?'':'<strong style="color:#8a6a2e">Nothing set yet — client links and QR labels won\'t work until you fill this in.</strong>'}</div>
+      <div class="fg"><label class="fl">Base URL (no trailing slash)</label><input class="fi" id="set-portal-url" value="${s.portalBaseUrl||''}" placeholder="https://portal.mitchellconstructionco.net"></div>
+      <div style="font-size:11px;color:#8f8d86;margin:-4px 0 12px">This is the address this exact HTML file is hosted at — a real domain or hosting URL (Netlify, Vercel, your own site subdomain, etc.), not a placeholder.</div>
+      <button class="btn btn-blk btn-sm" onclick="saveSet()">Save Settings</button>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hd">${ic('mail',13)} Email Reminders</div>
+      <div style="font-size:12px;color:#8f8d86;margin-bottom:14px">This is where you set up the business side of automated emails — who they come from, and on what schedule. Fields here save locally like the rest of this page; the actual sending happens through a separate Supabase piece (see note below).</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">From name</label><input class="fi" id="set-from-name" value="${s.fromName||''}" placeholder="Mitchell Construction & Design"></div>
+        <div class="fg"><label class="fl">From email</label><input class="fi" id="set-from-email" value="${s.fromEmail||''}" placeholder="reminders@mitchellconstructionco.net"></div>
+      </div>
+      <div style="font-size:11px;color:#8f8d86;margin:-6px 0 14px">This address needs to be verified with your email-sending service (SPF/DKIM records on your domain) before it can actually send — that's set up on the Resend/Postmark side, not here.</div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Heads-up reminder</label><select class="fi" id="set-headsup">${[3,5,7,10,14].map(n=>`<option value="${n}"${(s.headsUpDays||7)===n?' selected':''}>${n} days before due</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Overdue reminder repeats every</label><select class="fi" id="set-overdue-repeat">${[3,5,7,14].map(n=>`<option value="${n}"${(s.overdueRepeatDays||7)===n?' selected':''}>${n} days, until done</option>`).join('')}</select></div>
+      </div>
+      <div class="fg"><label class="fl">Monthly recap sends on</label><select class="fi" id="set-recap-day">${[1,5,10,15,25].map(n=>`<option value="${n}"${(s.monthlyRecapDay||1)===n?' selected':''}>Day ${n} of each month</option>`).join('')}</select></div>
+      <button class="btn btn-blk btn-sm" onclick="saveEmailSettings()">Save Settings</button>
+      <div class="alert alert-info" style="margin-top:14px"><span>${ic('info',15)}</span><div>These reminders aren't sending yet. Once Supabase is fully wired up, a scheduled job reads these settings and sends through your email service. The one thing that never lives here, on purpose: your email service's API key. That gets set directly in Supabase (Edge Function secrets), not in this app — a page anyone could view the source of shouldn't be able to see a key that can send email as your business.</div></div>
+    </div>
+
     <div class="card" style="margin-bottom:16px">
       <div class="card-hd">${ic('palette',13)} Branding</div>
       <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
@@ -920,8 +842,18 @@ function saveSet(){
   DB.companySettings.email=document.getElementById('set-email').value.trim();
   DB.companySettings.phone=document.getElementById('set-phone').value.trim();
   DB.companySettings.builderTrendUrl=document.getElementById('set-bt').value.trim();
+  DB.companySettings.portalBaseUrl=document.getElementById('set-portal-url').value.trim().replace(/\/$/,'');
   rSET();rEM();rLogo();
   alert('Settings saved.');
+}
+function saveEmailSettings(){
+  DB.companySettings.fromName=document.getElementById('set-from-name').value.trim();
+  DB.companySettings.fromEmail=document.getElementById('set-from-email').value.trim();
+  DB.companySettings.headsUpDays=parseInt(document.getElementById('set-headsup').value);
+  DB.companySettings.overdueRepeatDays=parseInt(document.getElementById('set-overdue-repeat').value);
+  DB.companySettings.monthlyRecapDay=parseInt(document.getElementById('set-recap-day').value);
+  rSET();
+  alert('Email settings saved.');
 }
 function handleLogoUpload(input){
   const file=input.files&&input.files[0];if(!file)return;
@@ -1113,8 +1045,9 @@ function rCDB(id,tab){
       </div>
       <div class="card"><div class="card-hd">${ic('link',13)} Client Portal Link</div>
         <div style="font-size:12px;color:#8f8d86;margin-bottom:8px">Share this link plus the PIN below — the client needs both to get in.</div>
-        <div class="fg"><label class="fl">Portal code</label><input class="fi" value="${c.portalCode}" onchange="gC(${id}).portalCode=this.value;document.getElementById('plnk').textContent='mitchell-homecare.com/portal/'+this.value"></div>
-        <div class="link-copy"><span class="link-code" id="plnk">mitchell-homecare.com/portal/${c.portalCode}</span><button class="btn btn-sm" onclick="navigator.clipboard.writeText('https://mitchell-homecare.com/portal/${c.portalCode}').then(()=>this.textContent='Copied!').catch(()=>alert('Copy failed'))">Copy</button></div>
+        ${DB.companySettings.portalBaseUrl?'':`<div class="alert alert-warn" style="margin-bottom:12px">${ic('warn',13)}<div>No Portal Base URL set yet — set it in <a href="#" onclick="gP('settings');return false" style="color:#8a6a2e;font-weight:700;text-decoration:underline">Company Settings</a> before sharing links or printing labels, or they'll point nowhere.</div></div>`}
+        <div class="fg"><label class="fl">Portal code</label><input class="fi" value="${c.portalCode}" onchange="gC(${id}).portalCode=this.value;document.getElementById('plnk').textContent=portalUrl(this.value)||'[ Set your Portal Base URL in Company Settings ]'"></div>
+        <div class="link-copy"><span class="link-code" id="plnk">${portalUrl(c.portalCode)||'[ Set your Portal Base URL in Company Settings ]'}</span><button class="btn btn-sm" onclick="const u=portalUrl('${c.portalCode}');if(!u){alert('Set your Portal Base URL in Company Settings first.');return;}navigator.clipboard.writeText(u).then(()=>this.textContent='Copied!').catch(()=>alert('Copy failed'))">Copy</button></div>
         <div class="fg" style="margin-top:14px"><label class="fl">Access PIN</label>
           <div style="display:flex;gap:8px"><input class="fi" id="pin-field-${id}" value="${c.pin||''}" maxlength="6" style="letter-spacing:.2em;font-weight:700" onchange="gC(${id}).pin=this.value.trim()"><button class="btn btn-sm" onclick="regenPin(${id})">Regenerate</button></div>
         </div>
@@ -1523,7 +1456,8 @@ function printRecord(id){
 }
 function printQRLabel(id){
   const c=gC(id);
-  const url=`https://mitchell-homecare.com/portal/${c.portalCode}`;
+  const url=portalUrl(c.portalCode);
+  if(!url){alert('Set your Portal Base URL in Company Settings first — otherwise this QR code would point to a domain that doesn\'t exist.');gP('settings');return;}
   const qr=qrcode(0,'M');
   qr.addData(url);
   qr.make();
@@ -1738,7 +1672,7 @@ function rAcWiz(){
     </div>
     <div style="display:flex;justify-content:space-between"><button class="btn" onclick="acStep=5;rAcWiz()">← Back</button><button class="btn btn-blk" style="padding:10px 28px;font-size:14px" onclick="acSave()">${ic('check',14)} Save Client</button></div>`;}
 }
-function acN1(){const n=document.getElementById('a-nm').value.trim(),ph=document.getElementById('a-ph').value.trim(),em=document.getElementById('a-em').value.trim(),ad=document.getElementById('a-ad').value.trim();if(!n||!ph||!em||!ad)return alert('Please fill in all required fields.');const pc2=document.getElementById('a-pc').value.trim()||n.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'-');Object.assign(acData,{name:n,phone:ph,email:em,address:ad,portalCode:pc2,emailRemindDays:parseInt(document.getElementById('a-er').value),tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[]});acStep=2;rAcWiz();}
+function acN1(){const n=document.getElementById('a-nm').value.trim(),ph=document.getElementById('a-ph').value.trim(),em=document.getElementById('a-em').value.trim(),ad=document.getElementById('a-ad').value.trim();if(!n||!ph||!em||!ad)return alert('Please fill in all required fields.');const pc2=document.getElementById('a-pc').value.trim()||n.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'-');Object.assign(acData,{name:n,phone:ph,email:em,address:ad,portalCode:pc2,pin:String(Math.floor(1000+Math.random()*9000)),emailRemindDays:parseInt(document.getElementById('a-er').value),tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[]});acStep=2;rAcWiz();}
 function acAT(){const n=document.getElementById('nt-n').value.trim();if(!n)return;const fr=freqToDays(document.getElementById('nt-fn').value,document.getElementById('nt-fu').value);const ln=document.getElementById('nt-ln').value.trim(),lu=document.getElementById('nt-lu').value.trim();acData.tasks.push({id:Date.now(),name:n,icon:document.getElementById('nt-i').value||'wrench',freqDays:fr,nextDue:dFN(fr),history:[],link:(ln&&lu)?{name:ln,url:lu,store:'Amazon'}:null});rAcWiz();}
 function acAL(){const n=document.getElementById('nl-n').value.trim(),u=document.getElementById('nl-u').value.trim();if(!n||!u)return;acData.links.push({id:Date.now(),name:n,url:u,store:document.getElementById('nl-s').value,note:document.getElementById('nl-no').value});rAcWiz();}
 function acAP(){const a=document.getElementById('np-a').value.trim(),n=document.getElementById('np-n').value.trim();if(!a||!n)return;acData.paints.push({area:a,name:n,brand:document.getElementById('np-b').value,hex:document.getElementById('np-h').value,type:document.getElementById('np-t').value,sheen:document.getElementById('np-s').value});rAcWiz();}
