@@ -259,7 +259,7 @@ function freqPicker(numId,unitId,days){
 function portalUrl(portalCode){
   const base=(DB.companySettings.portalBaseUrl||'').trim().replace(/\/$/,'');
   if(!base)return null;
-  return `${base}/?portal=${encodeURIComponent(portalCode)}`;
+  return `${base}/#portal=${encodeURIComponent(portalCode)}`;
 }
 function affUrl(url,store){
   if(!url)return'#';
@@ -385,6 +385,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
     <div class="nav-item active" id="nav-dashboard" onclick="gP('dashboard')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>Dashboard</div>
     <div class="nav-item" id="nav-emails" onclick="gP('emails')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>Email Reminders</div>
     <div class="nav-item" id="nav-vendors" onclick="gP('vendors')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Vendor Directory</div>
+    <div class="nav-item" id="nav-links" onclick="gP('links')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M9 15l6-6"/><path d="M13 6.5l1-1a3.5 3.5 0 1 1 5 5l-2 2"/><path d="M11 17.5l-1 1a3.5 3.5 0 1 1-5-5l2-2"/></svg></span>Client Links</div>
     <div class="nav-item" id="nav-settings" onclick="gP('settings')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>Company Settings</div>
   </div>
   <div id="cli-nav" style="display:none">
@@ -414,6 +415,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
   <div class="page active" id="page-dashboard"><div class="pg-body" id="db-body"></div></div>
   <div class="page" id="page-emails"><div class="pg-body" id="em-body"></div></div>
   <div class="page" id="page-vendors"><div class="pg-body" id="vnd-body"></div></div>
+  <div class="page" id="page-links"><div class="pg-body" id="lnk-body"></div></div>
   <div class="page" id="page-settings"><div class="pg-body" id="set-body"></div></div>
   <div class="page" id="page-client-detail">
     <div id="cd-hero"></div>
@@ -558,7 +560,8 @@ async function checkAdminAuth(){
   });
 }
 window.onload=()=>{
-  const portalCode=new URLSearchParams(location.search).get('portal');
+  const hashMatch=location.hash.match(/portal=([^&]+)/);
+  const portalCode=(hashMatch&&decodeURIComponent(hashMatch[1]))||new URLSearchParams(location.search).get('portal');
   if(portalCode){document.getElementById('login-screen').style.display='none';initClientOnlyMode(portalCode);return;}
   checkAdminAuth();
 };
@@ -567,10 +570,11 @@ function gP(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('page-'+p);if(el)el.classList.add('active');
   page=p;
-  ['dashboard','emails','vendors','settings'].forEach(id=>{const n=document.getElementById('nav-'+id);if(n)n.classList.toggle('active',p===id)});
+  ['dashboard','emails','vendors','links','settings'].forEach(id=>{const n=document.getElementById('nav-'+id);if(n)n.classList.toggle('active',p===id)});
   if(p==='dashboard')setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
   else if(p==='emails')setTB('Email Reminders','Automated reminders via your email service','');
   else if(p==='vendors')setTB('Vendor Directory','Trusted contractors & service providers',`<button class="btn btn-blk btn-sm" onclick="oAddVendor()">${ic('plus',12)} Add Vendor</button>`);
+  else if(p==='links'){setTB('Client Links','Every client\'s portal link, PIN, and QR code in one place','');rLinks();}
   else if(p==='settings')setTB('Company Settings','Amazon Associates, branding & defaults','');
   else if(p==='add-client'){acStep=1;acData={tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[]};setTB('Add New Client','Set up a new client portal',`<button class="btn btn-sm" onclick="gP('dashboard')">${ic('x',12)} Cancel</button>`);rAcWiz();}
 }
@@ -698,6 +702,31 @@ function prevEmail(cid2,tid){
 // ═══════════════════════════════════════════
 // VENDOR DIRECTORY
 // ═══════════════════════════════════════════
+function rLinks(){
+  const base=DB.companySettings.portalBaseUrl;
+  document.getElementById('lnk-body').innerHTML=`
+    ${!base?`<div class="alert alert-warn" style="margin-bottom:16px">${ic('warn',13)}<div>No Portal Base URL set — every link below is a placeholder until you set one in <a href="#" onclick="gP('settings');return false" style="color:#8a6a2e;font-weight:700;text-decoration:underline">Company Settings</a>.</div></div>`:
+    `<div class="alert alert-info" style="margin-bottom:16px">${ic('info',15)}<div>Links use <span style="font-family:monospace">#portal=code</span> (not a URL path) — that's intentional, it's what makes these work reliably on any static host. Don't hand-edit the format.</div></div>`}
+    <div class="card" style="padding:0;overflow:hidden">
+      ${DB.clients.length===0?'<div style="padding:24px;text-align:center;color:#8f8d86;font-size:13px">No clients yet.</div>':DB.clients.map(c=>{
+        const url=portalUrl(c.portalCode);
+        return`<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #edece9">
+          ${ava(c,32)}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:700">${c.name}</div>
+            <div style="font-size:11.5px;color:#8f8d86;font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${url||'Set Portal Base URL first'}</div>
+          </div>
+          <div style="text-align:center;flex-shrink:0">
+            <div style="font-size:9px;color:#8f8d86;text-transform:uppercase;letter-spacing:.06em;font-weight:700">PIN</div>
+            <div style="font-size:14px;font-weight:800;letter-spacing:.1em">${c.pin||'—'}</div>
+          </div>
+          <button class="btn btn-sm" ${url?`onclick="navigator.clipboard.writeText('${url}').then(()=>{this.textContent='Copied!';setTimeout(()=>this.textContent='Copy Link',1200)}).catch(()=>alert('Copy failed'))"`:'disabled'}>Copy Link</button>
+          <button class="btn btn-sm" onclick="printQRLabel(${c.id})">${ic('qr',12)} Print QR</button>
+          <button class="btn btn-blk btn-sm" onclick="selC(${c.id})">Open</button>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
 function rVND(){
   document.getElementById('vnd-body').innerHTML=`
     <div class="alert alert-lime" style="margin-bottom:16px"><span>${ic('checkc',15)}</span><div>Vendors added here automatically appear in each client's "Find a Vendor" section — no extra setup needed per client.</div></div>
@@ -1475,6 +1504,7 @@ function printQRLabel(id){
         <div style="font-size:22px;font-weight:800;color:#1c1c1c;letter-spacing:.15em">${c.pin||'— — — —'}</div>
       </div>
       <div style="font-size:11px;color:#8f8d86;margin-top:16px;line-height:1.5">Scan the code, then enter the PIN above<br>to view your home's maintenance schedule</div>
+      <div style="font-size:7.5px;color:#b5b3ac;margin-top:14px;word-break:break-all;max-width:2.8in">${url}</div>
     </div>`;
   alert('Before printing: in the print dialog, set "Paper size" to 4 x 6 in (or Custom, 4in by 6in). If it stays on Letter or A4, the label will print small and off-center instead of filling the label.');
   window.print();
