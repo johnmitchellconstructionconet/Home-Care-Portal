@@ -1,0 +1,1650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mitchell Home Care Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#9c968a;--nav-bg:#ffffff;--nav-text:#1c1c1c;--nav-text-soft:#8f8d86;--nav-active-bg:#f0efec;--nav-border:#e8e6e1}
+body{font-family:'Inter',sans-serif;background:#f8f8f6;color:#1c1c1c;font-size:14px;-webkit-font-smoothing:antialiased}
+input[type=range]{accent-color:#1c1c1c}
+input[type=color]{accent-color:#1c1c1c}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#f8f8f6}::-webkit-scrollbar-thumb{background:#d3d1cb;border-radius:10px}
+#app{display:flex;height:100vh;overflow:hidden}
+#sidebar{width:236px;min-width:236px;background:var(--nav-bg);border-right:1px solid var(--nav-border);display:flex;flex-direction:column}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+
+.logo-wrap{padding:20px 20px 15px;border-bottom:1px solid var(--nav-border);display:flex;align-items:center;min-height:24px}
+.logo-name{font-size:16px;font-weight:800;letter-spacing:.02em;color:var(--nav-text)}
+.logo-sub{font-size:10px;color:var(--nav-text-soft);font-weight:600;letter-spacing:.06em;margin-top:2px}
+.logo-rule{width:28px;height:2px;background:var(--nav-text);margin:8px 0 9px}
+.logo-tag{font-size:9px;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.12em}
+
+.seg{display:inline-flex;gap:2px;background:#f0efec;border-radius:10px;padding:3px}
+.seg button{padding:7px 15px;font-size:11.5px;border:none;border-radius:8px;cursor:pointer;background:transparent;color:#7a7873;font-weight:700;font-family:'Inter',sans-serif;transition:all .15s}
+.seg button.active{background:#fff;color:#1c1c1c;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.seg button:not(.active):hover{color:#1c1c1c}
+
+.nav-lbl{font-size:9.5px;font-weight:700;color:var(--nav-text-soft);text-transform:uppercase;letter-spacing:.1em;padding:10px 18px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;margin:1px 10px;padding:8px 10px;border-radius:8px;font-size:12.5px;cursor:pointer;color:var(--nav-text-soft);font-weight:500;transition:all .15s}
+.nav-item:hover{background:var(--nav-active-bg);color:var(--nav-text)}
+.nav-item.active{background:var(--nav-active-bg);color:var(--nav-text);font-weight:700}
+.nav-item.active::after{content:'';width:5px;height:5px;border-radius:50%;background:var(--accent);margin-left:auto;flex-shrink:0}
+.nav-icon{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.ava{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+.sb-footer{padding:12px 18px;border-top:1px solid var(--nav-border)}
+.sb-footer>div:first-child{color:var(--nav-text)}
+.sb-tagline{font-size:10px;color:var(--nav-text-soft);font-weight:500;margin-top:2px}
+
+#topbar{background:#fff;border-bottom:1px solid #e8e6e1;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.tb-title{font-size:16px;font-weight:800;color:#1c1c1c}
+.tb-sub{font-size:11.5px;color:#8f8d86;margin-top:1px}
+.tb-actions{display:flex;gap:8px;align-items:center}
+
+.page{display:none;flex:1;flex-direction:column;overflow:hidden}.page.active{display:flex}
+.pg-body{flex:1;overflow-y:auto;padding:22px}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:12px;border-radius:9px;border:1.5px solid #e8e6e1;background:#fff;cursor:pointer;font-weight:700;color:#1c1c1c;transition:all .15s;font-family:'Inter',sans-serif}
+.btn:hover{background:#f8f8f6}
+.btn-blk{background:#1c1c1c;color:#fff;border-color:#1c1c1c}.btn-blk:hover{background:#000}
+.btn-tan{background:#fff;color:#1c1c1c;border-color:#1c1c1c}.btn-tan:hover{background:#f0efec}
+.btn-lime{background:#c7d6ba;color:#4c6b3f;border-color:#c7d6ba}.btn-lime:hover{background:#b7c9a4}
+.btn-sm{padding:6px 12px;font-size:11px}
+.btn-done{background:#eef1e8;color:#4c6b3f;border-color:#c7d6ba;font-size:11px;padding:6px 13px}
+.btn-done:hover{background:#c7d6ba}
+
+.card{background:#fff;border:1px solid #e8e6e1;border-radius:14px;padding:18px 20px;transition:box-shadow .15s,border-color .15s}
+.proj-card:hover{border-color:#d3d1cb;box-shadow:0 4px 14px rgba(20,20,18,.06)}
+.card-hd{font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.metric{background:#fff;border:1px solid #e8e6e1;border-radius:12px;padding:16px;text-align:center}
+.metric-v{font-size:30px;font-weight:800;margin-top:5px;line-height:1}
+.metric-l{font-size:9.5px;color:#8f8d86;font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #edece9}.row:last-child{border-bottom:none}
+.row-cl{cursor:pointer;padding:10px 8px;border-radius:8px;margin:-2px -8px}.row-cl:hover{background:#f8f8f6}
+.ib{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.tab-bar{display:flex;background:#fff;border-bottom:1px solid #e8e6e1;flex-shrink:0;overflow-x:auto}
+.tab{padding:11px 17px;font-size:12px;cursor:pointer;color:#8f8d86;border-bottom:2.5px solid transparent;font-weight:600;white-space:nowrap}
+.tab.active{color:#1c1c1c;border-bottom-color:#1c1c1c;font-weight:700}
+.tab:hover:not(.active){color:#1c1c1c}
+.prog{height:4px;background:#edece9;border-radius:2px;overflow:hidden;margin-top:6px}
+.prog-f{height:100%;border-radius:2px}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.fi{width:100%;padding:9px 12px;border:1.5px solid #e8e6e1;border-radius:9px;font-size:13px;color:#1c1c1c;background:#fff;font-family:'Inter',sans-serif}
+.fi:focus{outline:none;border-color:#9c968a;box-shadow:0 0 0 3px rgba(28,28,28,.08)}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.step-bar{display:flex;align-items:center;padding:12px 24px;background:#fff;border-bottom:1px solid #e8e6e1;flex-shrink:0;gap:0;overflow-x:auto}
+.step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.step-line{width:18px;height:1px;background:#e8e6e1;margin:0 5px;flex-shrink:0}
+.hero{background:#1c1c1c;padding:20px 24px 16px;color:#fff;flex-shrink:0;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.05)}
+.hero-c{position:relative;z-index:1}
+.alert{border-radius:10px;padding:11px 15px;display:flex;gap:10px;font-size:12px;margin-bottom:14px}
+.alert-info{background:#eeeeec;border:1px solid #d3d1cb;color:#1c1c1c}
+.alert-lime{background:#eef1e8;border:1px solid rgba(76,107,63,.25);color:#4c6b3f}
+.alert-warn{background:#f6f0e3;border:1px solid rgba(180,120,20,.25);color:#8a6a2e}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(20,20,20,.5);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:24px;width:540px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:800;margin-bottom:15px;color:#1c1c1c}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:15px;padding-top:13px;border-top:1px solid #edece9}
+.dt{width:100%;border-collapse:collapse}
+.dt th{font-size:9.5px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.07em;padding:10px 15px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;text-align:left}
+.dt td{padding:11px 15px;border-bottom:1px solid #edece9;font-size:12px;cursor:pointer}
+.dt tr:last-child td{border-bottom:none}.dt tr:hover td{background:#f8f8f6}
+.adder{background:#f8f8f6;border:1.5px dashed #d3d1cb;border-radius:10px;padding:15px;margin-top:10px}
+.vendor-card{background:#fff;border:1px solid #e8e6e1;border-radius:12px;padding:15px;display:flex;flex-direction:column;gap:4px}
+.link-copy{background:#eeeeec;border:1px solid #d3d1cb;border-radius:9px;padding:9px 13px;font-size:11px;color:#1c1c1c;display:flex;align-items:center;gap:8px;margin-top:6px}
+.link-code{font-family:monospace;font-weight:700;flex:1;font-size:12px}
+.upload-zone{border:2px dashed #d3d1cb;border-radius:11px;padding:30px;text-align:center;cursor:pointer;background:#fff}
+.upload-zone:hover{border-color:#9c968a;background:#f6f5f2}
+.upload-zone input[type=file]{display:none}
+.file-item{display:flex;align-items:center;gap:12px;padding:11px 15px;border-bottom:1px solid #edece9}
+.file-item:last-child{border-bottom:none}
+.file-icon{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.hist-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #edece9}
+.hist-row:last-child{border-bottom:none}
+.status-pill{border:1.5px solid #e8e6e1;border-radius:20px;padding:4px 22px 4px 12px;font-size:10.5px;font-weight:700;color:#1c1c1c;background:#fff;cursor:pointer;font-family:'Inter',sans-serif;flex-shrink:0;
+  background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238f8d86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>');
+  background-repeat:no-repeat;background-position:right 6px center;background-size:11px;-webkit-appearance:none;appearance:none}
+.reorder-pill{display:flex;align-items:center;gap:6px;background:#f6f5f2;border:1px solid #edece9;border-radius:8px;padding:6px 10px;font-size:11px;color:#6b5738;font-weight:600}
+@media print{
+  #app{display:none!important}
+  body{background:#fff}
+  #print-area{display:block!important}
+  #print-area.qr-label-page{display:flex!important;align-items:center;justify-content:center;width:100%;min-height:100vh}
+}
+#print-area{display:none}
+</style>
+</head>
+<body>
+<script>
+// Embedded QR code generator (qrcode-generator by Kazuhiko Arase, MIT license) — no network dependency, so printed labels always render.
+var qrcode=function(){var t=function(t,r){var e=t,n=g[r],o=null,i=0,a=null,u=[],f={},c=function(t,r){o=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(i=4*e+17),l(0,0),l(i-7,0),l(0,i-7),s(),h(),d(t,r),e>=7&&v(t),null==a&&(a=p(e,n,u)),w(a,r)},l=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||i<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||i<=r+n||(o[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},h=function(){for(var t=8;t<i-8;t+=1)null==o[t][6]&&(o[t][6]=t%2==0);for(var r=8;r<i-8;r+=1)null==o[6][r]&&(o[6][r]=r%2==0)},s=function(){for(var t=B.getPatternPosition(e),r=0;r<t.length;r+=1)for(var n=0;n<t.length;n+=1){var i=t[r],a=t[n];if(null==o[i][a])for(var u=-2;u<=2;u+=1)for(var f=-2;f<=2;f+=1)o[i+u][a+f]=-2==u||2==u||-2==f||2==f||0==u&&0==f}},v=function(t){for(var r=B.getBCHTypeNumber(e),n=0;n<18;n+=1){var a=!t&&1==(r>>n&1);o[Math.floor(n/3)][n%3+i-8-3]=a}for(n=0;n<18;n+=1){a=!t&&1==(r>>n&1);o[n%3+i-8-3][Math.floor(n/3)]=a}},d=function(t,r){for(var e=n<<3|r,a=B.getBCHTypeInfo(e),u=0;u<15;u+=1){var f=!t&&1==(a>>u&1);u<6?o[u][8]=f:u<8?o[u+1][8]=f:o[i-15+u][8]=f}for(u=0;u<15;u+=1){f=!t&&1==(a>>u&1);u<8?o[8][i-u-1]=f:u<9?o[8][15-u-1+1]=f:o[8][15-u-1]=f}o[i-8][8]=!t},w=function(t,r){for(var e=-1,n=i-1,a=7,u=0,f=B.getMaskFunction(r),c=i-1;c>0;c-=2)for(6==c&&(c-=1);;){for(var g=0;g<2;g+=1)if(null==o[n][c-g]){var l=!1;u<t.length&&(l=1==(t[u]>>>a&1)),f(n,c-g)&&(l=!l),o[n][c-g]=l,-1==(a-=1)&&(u+=1,a=7)}if((n+=e)<0||i<=n){n-=e,e=-e;break}}},p=function(t,r,e){for(var n=A.getRSBlocks(t,r),o=b(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=k(i[u],l.getLength()-1).mod(l);for(a[u]=new Array(l.getLength()-1),g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=s>=0?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};f.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=M(t);break;case"Alphanumeric":e=x(t);break;case"Byte":e=m(t);break;case"Kanji":e=L(t);break;default:throw"mode:"+r}u.push(e),a=null},f.isDark=function(t,r){if(t<0||i<=t||r<0||i<=r)throw t+","+r;return o[t][r]},f.getModuleCount=function(){return i},f.make=function(){if(e<1){for(var t=1;t<40;t++){for(var r=A.getRSBlocks(t,n),o=b(),i=0;i<u.length;i++){var a=u[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var g=0;for(i=0;i<r.length;i++)g+=r[i].dataCount;if(o.getLengthInBits()<=8*g)break}e=t}c(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){c(!0,e);var n=B.getLostPoint(f);(0==e||t>n)&&(t=n,r=e)}return r}())},f.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<f.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<f.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=f.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},f.createSvgTag=function(t,r,e,n){var o={};"object"==typeof arguments[0]&&(t=(o=arguments[0]).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,c,g=f.getModuleCount()*t+2*r,l="";for(c="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",l+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',l+=o.scalable?"":' width="'+g+'px" height="'+g+'px"',l+=' viewBox="0 0 '+g+" "+g+'" ',l+=' preserveAspectRatio="xMinYMin meet"',l+=n.text||e.text?' role="img" aria-labelledby="'+y([n.id,e.id].join(" ").trim())+'"':"",l+=">",l+=n.text?'<title id="'+y(n.id)+'">'+y(n.text)+"</title>":"",l+=e.text?'<description id="'+y(e.id)+'">'+y(e.text)+"</description>":"",l+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',l+='<path d="',a=0;a<f.getModuleCount();a+=1)for(u=a*t+r,i=0;i<f.getModuleCount();i+=1)f.isDark(a,i)&&(l+="M"+(i*t+r)+","+u+c);return l+='" stroke="transparent" fill="black"/>',l+="</svg>"},f.createDataURL=function(t,r){t=t||2,r=void 0===r?4*t:r;var e=f.getModuleCount()*t+2*r,n=r,o=e-r;return I(e,e,function(r,e){if(n<=r&&r<o&&n<=e&&e<o){var i=Math.floor((r-n)/t),a=Math.floor((e-n)/t);return f.isDark(a,i)?0:1}return 1})},f.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=f.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=f.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=y(e),o+='"'),o+="/>"};var y=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return f.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*f.getModuleCount()+2*t,u=t,c=a-t,g={"██":"█","█ ":"▀"," █":"▄","  ":" "},l={"██":"▀","█ ":"▀"," █":" ","  ":" "},h="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<c&&u<=r&&r<c&&f.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<c&&u<=r+1&&r+1<c&&f.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",h+=t<1&&r+1>=c?l[i]:g[i];h+="\n"}return a%2&&t>0?h.substring(0,h.length-a-1)+Array(a+1).join("▀"):h.substring(0,h.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=f.getModuleCount()*t+2*r,u=r,c=a-r,g=Array(t+1).join("██"),l=Array(t+1).join("  "),h="",s="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),s="",n=0;n<a;n+=1)i=1,u<=n&&n<c&&u<=e&&e<c&&f.isDark(o,Math.floor((n-u)/t))&&(i=0),s+=i?g:l;for(o=0;o<t;o+=1)h+=s+"\n"}return h.substring(0,h.length-1)},f.renderTo2dContext=function(t,r){r=r||2;for(var e=f.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=f.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},f};t.stringToBytes=(t.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,t.createStringToBytes=function(t,r){var e=function(){for(var e=S(t),n=function(){var t=e.read();if(-1==t)throw"eof";return t},o=0,i={};;){var a=e.read();if(-1==a)break;var u=n(),f=n()<<8|n();i[String.fromCharCode(a<<8|u)]=f,o+=1}if(o!=r)throw o+" != "+r;return i}(),n="?".charCodeAt(0);return function(t){for(var r=[],o=0;o<t.length;o+=1){var i=t.charCodeAt(o);if(i<128)r.push(i);else{var a=e[t.charAt(o)];"number"==typeof a?(255&a)==a?r.push(a):(r.push(a>>>8),r.push(255&a)):r.push(n)}}return r}};var r,e,n,o,i,a=1,u=2,f=4,c=8,g={L:1,M:0,Q:3,H:2},l=0,h=1,s=2,v=3,d=4,w=5,p=6,y=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],e=1335,n=7973,i=function(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r},(o={}).getBCHTypeInfo=function(t){for(var r=t<<10;i(r)-i(e)>=0;)r^=e<<i(r)-i(e);return 21522^(t<<10|r)},o.getBCHTypeNumber=function(t){for(var r=t<<12;i(r)-i(n)>=0;)r^=n<<i(r)-i(n);return t<<12|r},o.getPatternPosition=function(t){return r[t-1]},o.getMaskFunction=function(t){switch(t){case l:return function(t,r){return(t+r)%2==0};case h:return function(t,r){return t%2==0};case s:return function(t,r){return r%3==0};case v:return function(t,r){return(t+r)%3==0};case d:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case w:return function(t,r){return t*r%2+t*r%3==0};case p:return function(t,r){return(t*r%2+t*r%3)%2==0};case y:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},o.getErrorCorrectPolynomial=function(t){for(var r=k([1],0),e=0;e<t;e+=1)r=r.multiply(k([1,C.gexp(e)],0));return r},o.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case f:case c:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case f:return 16;case c:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case f:return 16;case c:return 12;default:throw"mode:"+t}}},o.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);i>5&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},o),C=function(){for(var t=new Array(256),r=new Array(256),e=0;e<8;e+=1)t[e]=1<<e;for(e=8;e<256;e+=1)t[e]=t[e-4]^t[e-5]^t[e-6]^t[e-8];for(e=0;e<255;e+=1)r[t[e]]=e;var n={glog:function(t){if(t<1)throw"glog("+t+")";return r[t]},gexp:function(r){for(;r<0;)r+=255;for(;r>=256;)r-=255;return t[r]}};return n}();function k(t,r){if(void 0===t.length)throw t.length+"/"+r;var e=function(){for(var e=0;e<t.length&&0==t[e];)e+=1;for(var n=new Array(t.length-e+r),o=0;o<t.length-e;o+=1)n[o]=t[o+e];return n}(),n={getAt:function(t){return e[t]},getLength:function(){return e.length},multiply:function(t){for(var r=new Array(n.getLength()+t.getLength()-1),e=0;e<n.getLength();e+=1)for(var o=0;o<t.getLength();o+=1)r[e+o]^=C.gexp(C.glog(n.getAt(e))+C.glog(t.getAt(o)));return k(r,0)},mod:function(t){if(n.getLength()-t.getLength()<0)return n;for(var r=C.glog(n.getAt(0))-C.glog(t.getAt(0)),e=new Array(n.getLength()),o=0;o<n.getLength();o+=1)e[o]=n.getAt(o);for(o=0;o<t.getLength();o+=1)e[o]^=C.gexp(C.glog(t.getAt(o))+r);return k(e,0).mod(t)}};return n}var A=function(){var t=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],r=function(t,r){var e={};return e.totalCount=t,e.dataCount=r,e},e={};return e.getRSBlocks=function(e,n){var o=function(r,e){switch(e){case g.L:return t[4*(r-1)+0];case g.M:return t[4*(r-1)+1];case g.Q:return t[4*(r-1)+2];case g.H:return t[4*(r-1)+3];default:return}}(e,n);if(void 0===o)throw"bad rs block @ typeNumber:"+e+"/errorCorrectionLevel:"+n;for(var i=o.length/3,a=[],u=0;u<i;u+=1)for(var f=o[3*u+0],c=o[3*u+1],l=o[3*u+2],h=0;h<f;h+=1)a.push(r(c,l));return a},e}(),b=function(){var t=[],r=0,e={getBuffer:function(){return t},getAt:function(r){var e=Math.floor(r/8);return 1==(t[e]>>>7-r%8&1)},put:function(t,r){for(var n=0;n<r;n+=1)e.putBit(1==(t>>>r-n-1&1))},getLengthInBits:function(){return r},putBit:function(e){var n=Math.floor(r/8);t.length<=n&&t.push(0),e&&(t[n]|=128>>>r%8),r+=1}};return e},M=function(t){var r=a,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+2<r.length;)t.put(o(r.substring(n,n+3)),10),n+=3;n<r.length&&(r.length-n==1?t.put(o(r.substring(n,n+1)),4):r.length-n==2&&t.put(o(r.substring(n,n+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return n},x=function(t){var r=u,e=t,n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=e,n=0;n+1<r.length;)t.put(45*o(r.charAt(n))+o(r.charAt(n+1)),11),n+=2;n<r.length&&t.put(o(r.charAt(n)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return n},m=function(r){var e=f,n=t.stringToBytes(r),o={getMode:function(){return e},getLength:function(t){return n.length},write:function(t){for(var r=0;r<n.length;r+=1)t.put(n[r],8)}};return o},L=function(r){var e=c,n=t.stringToBytesFuncs.SJIS;if(!n)throw"sjis not supported.";!function(){var t=n("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=n(r),i={getMode:function(){return e},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return i},D=function(){var t=[],r={writeByte:function(r){t.push(255&r)},writeShort:function(t){r.writeByte(t),r.writeByte(t>>>8)},writeBytes:function(t,e,n){e=e||0,n=n||t.length;for(var o=0;o<n;o+=1)r.writeByte(t[o+e])},writeString:function(t){for(var e=0;e<t.length;e+=1)r.writeByte(t.charCodeAt(e))},toByteArray:function(){return t},toString:function(){var r="";r+="[";for(var e=0;e<t.length;e+=1)e>0&&(r+=","),r+=t[e];return r+="]"}};return r},S=function(t){var r=t,e=0,n=0,o=0,i={read:function(){for(;o<8;){if(e>=r.length){if(0==o)return-1;throw"unexpected end of file./"+o}var t=r.charAt(e);if(e+=1,"="==t)return o=0,-1;t.match(/^\s$/)||(n=n<<6|a(t.charCodeAt(0)),o+=6)}var i=n>>>o-8&255;return o-=8,i}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return i},I=function(t,r,e){for(var n=function(t,r){var e=t,n=r,o=new Array(t*r),i={setPixel:function(t,r,n){o[r*e+t]=n},write:function(t){t.writeString("GIF87a"),t.writeShort(e),t.writeShort(n),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(e),t.writeShort(n),t.writeByte(0);var r=a(2);t.writeByte(2);for(var o=0;r.length-o>255;)t.writeByte(255),t.writeBytes(r,o,255),o+=255;t.writeByte(r.length-o),t.writeBytes(r,o,r.length-o),t.writeByte(0),t.writeString(";")}},a=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,i=u(),a=0;a<r;a+=1)i.add(String.fromCharCode(a));i.add(String.fromCharCode(r)),i.add(String.fromCharCode(e));var f,c,g,l=D(),h=(f=l,c=0,g=0,{write:function(t,r){if(t>>>r!=0)throw"length over";for(;c+r>=8;)f.writeByte(255&(t<<c|g)),r-=8-c,t>>>=8-c,g=0,c=0;g|=t<<c,c+=r},flush:function(){c>0&&f.writeByte(g)}});h.write(r,n);var s=0,v=String.fromCharCode(o[s]);for(s+=1;s<o.length;){var d=String.fromCharCode(o[s]);s+=1,i.contains(v+d)?v+=d:(h.write(i.indexOf(v),n),i.size()<4095&&(i.size()==1<<n&&(n+=1),i.add(v+d)),v=d)}return h.write(i.indexOf(v),n),h.write(e,n),h.flush(),l.toByteArray()},u=function(){var t={},r=0,e={add:function(n){if(e.contains(n))throw"dup key:"+n;t[n]=r,r+=1},size:function(){return r},indexOf:function(r){return t[r]},contains:function(r){return void 0!==t[r]}};return e};return i}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=D();n.write(a);for(var u=function(){var t=0,r=0,e=0,n="",o={},i=function(t){n+=String.fromCharCode(a(63&t))},a=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return o.writeByte=function(n){for(t=t<<8|255&n,r+=8,e+=1;r>=6;)i(t>>>r-6),r-=6},o.flush=function(){if(r>0&&(i(t<<6-r),t=0,r=0),e%3!=0)for(var o=3-e%3,a=0;a<o;a+=1)n+="="},o.toString=function(){return n},o}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return t}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||n>=57344?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});
+</script>
+<script>
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function dFN(n){const d=new Date();d.setDate(d.getDate()+n);return d.toISOString().split('T')[0]}
+function dU(ds){return Math.round((new Date(ds+' 12:00:00')-new Date())/(864e5))}
+function fD(ds){return new Date(ds+' 12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
+function ini(n){return n.split(',').map(p=>p.trim()[0]).join('').toUpperCase()}
+function stOf(t){
+  const d=dU(t.nextDue);
+  if(d<0)  return{l:'Overdue',c:'#9a3b3b',bg:'#f5e9e8',k:'danger'};
+  if(d<=7) return{l:d+'d',c:'#8a6a2e',bg:'#f6f0e3',k:'warn'};
+  if(d<=30)return{l:d+'d',c:'#1c1c1c',bg:'#eeeeec',k:'info'};
+  return        {l:d+'d',c:'#4c6b3f',bg:'#eef1e8',k:'ok'};
+}
+function cSt(c){const ks=c.tasks.map(t=>stOf(t).k);if(ks.includes('danger'))return{l:'Overdue',c:'#9a3b3b',bg:'#f5e9e8'};if(ks.includes('warn'))return{l:'Attention',c:'#8a6a2e',bg:'#f6f0e3'};return{l:'On track',c:'#4c6b3f',bg:'#eef1e8'}}
+function pct(t){return Math.max(0,Math.min(100,Math.round(((t.freqDays-Math.max(0,dU(t.nextDue)))/t.freqDays)*100)))}
+function pc(k){return k==='danger'?'#c25a53':k==='warn'?'#ad8a3f':'#1c1c1c'}
+function bdg(l,c,bg){return`<span class="badge" style="background:${bg};color:${c}">${l}</span>`}
+function ava(cl,sz=32){return`<div class="ava" style="width:${sz}px;height:${sz}px;background:${cl.avatarBg};color:${cl.avatarColor};font-size:${Math.round(sz*.32)}px">${ini(cl.name)}</div>`}
+function gC(id){return DB.clients.find(c=>c.id===id)}
+function wExp(ds){const d=dU(ds);if(d<0)return{l:'Expired',c:'#9a3b3b',bg:'#f5e9e8'};if(d<365)return{l:'< 1 yr',c:'#8a6a2e',bg:'#f6f0e3'};return{l:'Active',c:'#4c6b3f',bg:'#eef1e8'}}
+function tcol(tr){return{'HVAC':'#eeeeec','Plumbing':'#e9f1fb','Pest Control':'#eef1e8','Electrical':'#faf5e4','Roofing':'#f6f0e3','Chimney':'#fef1ea','General':'#f0f0ee'}[tr]||'#f8f8f6'}
+function tic(tr){return{'HVAC':'snowflake','Plumbing':'droplet','Pest Control':'bug','Electrical':'zap','Roofing':'home','Chimney':'flame','General':'wrench'}[tr]||'wrench'}
+const EQUIP_CATS=['HVAC','Plumbing','Water Heater','Electrical','Roofing','Appliances','Other'];
+function eqIcon(cat){return{'HVAC':'snowflake','Plumbing':'droplet','Water Heater':'flame','Electrical':'zap','Roofing':'home','Appliances':'box'}[cat]||'wrench'}
+function groupEquip(list){
+  const groups={};
+  (list||[]).forEach(u=>{const cat=u.category||'Other';(groups[cat]=groups[cat]||[]).push(u);});
+  return EQUIP_CATS.filter(c=>groups[c]).map(c=>({cat:c,items:groups[c]}));
+}
+function fileIcon(name){const e=name.split('.').pop().toLowerCase();if(['pdf'].includes(e))return'file';if(['jpg','jpeg','png','gif','webp'].includes(e))return'image';if(['doc','docx'].includes(e))return'note';if(['xls','xlsx'].includes(e))return'filesheet';return'file'}
+function now(){return new Date().toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})}
+
+// ═══════════════════════════════════════════
+// ICON LIBRARY — clean line icons, no emoji
+// ═══════════════════════════════════════════
+const ICONS={
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  wrench:'<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',
+  home:'<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  clipboard:'<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 13l2 2 4-4"/>',
+  link:'<path d="M9 15l6-6"/><path d="M13 6.5l1-1a3.5 3.5 0 1 1 5 5l-2 2"/><path d="M11 17.5l-1 1a3.5 3.5 0 1 1-5-5l2-2"/>',
+  palette:'<rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3"/><circle cx="15" cy="9" r="1.3"/><circle cx="9" cy="15" r="1.3"/><circle cx="15" cy="15" r="1.3"/>',
+  shield:'<path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/>',
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>',
+  note:'<path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  pencil:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/>',
+  x:'<path d="M18 6L6 18M6 6l12 12"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+  printer:'<path d="M6 9V3h12v6"/><rect x="4" y="9" width="16" height="8" rx="1.5"/><path d="M6 17v4h12v-4"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+  extlink:'<path d="M7 17L17 7"/><path d="M8 7h9v9"/>',
+  upload:'<path d="M7 18a5 5 0 0 1-1-9.9A6 6 0 0 1 17.5 8H18a4 4 0 0 1 0 8h-1"/><path d="M12 12v7"/><path d="M9 15l3-3 3 3"/>',
+  check:'<path d="M20 6L9 17l-5-5"/>',
+  checkc:'<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+  warn:'<path d="M12 3l9.5 17H2.5z"/><path d="M12 9.5v4.2"/><circle cx="12" cy="16.6" r=".4" fill="currentColor"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><circle cx="12" cy="8" r=".4" fill="currentColor"/>',
+  arrowleft:'<path d="M19 12H5"/><path d="M11 18l-6-6 6-6"/>',
+  arrowright:'<path d="M5 12h14"/><path d="M13 6l6 6-6 6"/>',
+  eye:'<path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12z"/><circle cx="12" cy="12" r="3"/>',
+  droplet:'<path d="M12 2C8 8 5 11.5 5 15a7 7 0 0 0 14 0c0-3.5-3-7-7-13z"/>',
+  snowflake:'<path d="M12 2v20M4.5 6.5l15 11M19.5 6.5l-15 11M2 12h20"/>',
+  flame:'<path d="M12 2c1 4-4 5-4 9a4 4 0 0 0 8 0c0-1.5-1-2-1-3.5C15.5 9 17 11 17 14a5 5 0 1 1-10 0C7 8 10 6 12 2z"/>',
+  bug:'<circle cx="12" cy="13" r="6"/><path d="M12 7V4M9 4l1.5 2M15 4l-1.5 2M4 13h3M17 13h3M6 18l2-2M18 18l-2-2M6 8l2 2M18 8l-2-2"/>',
+  wind:'<path d="M3 8h11a3 3 0 1 0-3-3"/><path d="M3 16h14a3 3 0 1 1-3 3"/>',
+  door:'<rect x="5" y="3" width="12" height="18" rx="1"/><circle cx="14" cy="12" r="1"/>',
+  bell:'<path d="M6 8a6 6 0 1 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 21a2 2 0 0 0 4 0"/>',
+  leaf:'<path d="M5 21c0-9 6-15 15-15-1 9-7 15-15 15z"/><path d="M5 21c3-3 5-6 6-9"/>',
+  refresh:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>',
+  image:'<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5-4 4-3-3-6 6"/>',
+  file:'<path d="M6 2h9l3 3v17H6z"/>',
+  filesheet:'<path d="M6 2h9l3 3v17H6z"/><path d="M8 12h8M8 16h8M12 8v11"/>',
+  box:'<path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/>',
+  zap:'<path d="M13 2L4 14h6l-1 8 9-12h-6l1-8z"/>',
+  users:'<circle cx="9" cy="8" r="3.3"/><path d="M2.5 20c0-4 3-6.5 6.5-6.5S15.5 16 15.5 20"/><circle cx="17" cy="8.5" r="2.6"/><path d="M15 13.5c2.8.4 4.5 2.6 4.5 6.5"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  phone:'<path d="M15.5 17.5l1.8-1.8a1.5 1.5 0 0 0-.2-2.3l-2-1.5a1.5 1.5 0 0 0-1.9.1l-.9.9a11 11 0 0 1-4.2-4.2l.9-.9a1.5 1.5 0 0 0 .1-1.9l-1.5-2a1.5 1.5 0 0 0-2.3-.2L3.5 5.5c-1 1-1 3 .5 6a20 20 0 0 0 8.5 8.5c3 1.5 5 1.5 6-.5z"/>',
+  qr:'<rect x="3" y="3" width="6.5" height="6.5" rx="1" fill="currentColor" stroke="none"/><rect x="14.5" y="3" width="6.5" height="6.5" rx="1" fill="currentColor" stroke="none"/><rect x="3" y="14.5" width="6.5" height="6.5" rx="1" fill="currentColor" stroke="none"/><rect x="14.5" y="14.5" width="2.7" height="2.7" fill="currentColor" stroke="none"/><rect x="18.3" y="14.5" width="2.7" height="2.7" fill="currentColor" stroke="none"/><rect x="14.5" y="18.3" width="2.7" height="2.7" fill="currentColor" stroke="none"/><rect x="18.3" y="18.3" width="2.7" height="2.7" fill="currentColor" stroke="none"/>',
+  claim:'<path d="M9 12l2 2 4-4"/><path d="M12 3l8 4v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V7l8-4z"/>',
+  tag:'<path d="M20.6 13.4L13 21 3 11V3h8l9.6 9.6a2 2 0 0 1 0 2.8z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/>',
+};
+function ic(name,size=15,style){
+  const s=ICONS[name]||ICONS.info;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0${style?';'+style:''}">${s}</svg>`;
+}
+function taskIcon(name){
+  return ic(name,17);
+}
+const ICON_PICKS=['wrench','droplet','snowflake','flame','bug','wind','box','bell','leaf','door','shield','clipboard','refresh'];
+function iconPicker(id,current){
+  return `<select class="fi" id="${id}">${ICON_PICKS.map(k=>`<option value="${k}"${k===current?' selected':''}>${k.charAt(0).toUpperCase()+k.slice(1)}</option>`).join('')}</select>`;
+}
+const PAINT_SHEENS={Paint:['Flat','Eggshell','Satin','Semi-Gloss','Gloss'],Stain:['Transparent','Semi-Transparent','Solid','Satin','Gloss']};
+function sheenOptions(type,current){
+  return (PAINT_SHEENS[type]||PAINT_SHEENS.Paint).map(s=>`<option${s===current?' selected':''}>${s}</option>`).join('');
+}
+function refreshSheenOptions(typeId,sheenId){
+  const type=document.getElementById(typeId).value;
+  document.getElementById(sheenId).innerHTML=sheenOptions(type);
+}
+function daysToFreq(days){
+  days=days||90;
+  if(days>=365&&days%365===0)return{n:days/365,u:'Years'};
+  if(days>=30&&days%30===0)return{n:days/30,u:'Months'};
+  if(days>=7&&days%7===0)return{n:days/7,u:'Weeks'};
+  return{n:days,u:'Days'};
+}
+function freqToDays(n,u){
+  const mult={Days:1,Weeks:7,Months:30,Years:365}[u]||1;
+  return Math.max(1,Math.round((parseFloat(n)||1)*mult));
+}
+function freqPicker(numId,unitId,days){
+  const f=daysToFreq(days);
+  return `<div style="display:flex;gap:8px">
+    <input class="fi" type="number" min="1" step="1" id="${numId}" value="${f.n}" style="flex:1">
+    <select class="fi" id="${unitId}" style="flex:1">${['Days','Weeks','Months','Years'].map(u=>`<option${u===f.u?' selected':''}>${u}</option>`).join('')}</select>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+    ${[['Monthly',1,'Months'],['Quarterly',3,'Months'],['Semi-Annual',6,'Months'],['Annual',1,'Years']].map(([label,n,u])=>
+      `<button type="button" class="btn btn-sm" onclick="document.getElementById('${numId}').value=${n};document.getElementById('${unitId}').value='${u}'">${label}</button>`).join('')}
+  </div>`;
+}
+// Amazon affiliate tagging — appends the configured Associates tag to any Amazon link automatically
+function affUrl(url,store){
+  if(!url)return'#';
+  const tag=(DB.companySettings.amazonTag||'').trim();
+  if(!tag||!store||store.toLowerCase()!=='amazon')return url;
+  if(!/amazon\./i.test(url))return url;
+  try{
+    const u=new URL(url);
+    u.searchParams.set('tag',tag);
+    return u.toString();
+  }catch(e){
+    return url+(url.includes('?')?'&':'?')+'tag='+encodeURIComponent(tag);
+  }
+}
+
+// ═══════════════════════════════════════════
+// SUPABASE — client portal reads/writes go through the two
+// SECURITY DEFINER functions from supabase-schema.sql. Nothing
+// else touches Supabase yet (see note in chat about admin CRUD).
+// ═══════════════════════════════════════════
+const SUPABASE_URL = 'https://edtlwdakbjtnqetgnzod.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkdGx3ZGFrYmp0bnFldGduem9kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMTYzNTksImV4cCI6MjEwMzg5MjM1OX0._v4RUi1o3U5aljbWqyPqQOU8WTmTCq3d3dG5YxL96HY';
+let sb=null;
+try{
+  if(window.supabase&&window.supabase.createClient){
+    sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  }
+}catch(e){console.warn('Supabase client failed to initialize; running in local demo-data mode.',e);}
+
+async function fetchClientPortal(portalCode){
+  if(!sb)return null;
+  try{
+    const{data,error}=await sb.rpc('get_client_portal',{p_portal_code:portalCode});
+    if(error){console.warn('get_client_portal error, falling back to local demo data:',error);return null;}
+    if(!data||data.error){console.warn('get_client_portal returned no match for portal code:',portalCode);return null;}
+    return data;
+  }catch(e){console.warn('Supabase unreachable, falling back to local demo data:',e);return null;}
+}
+async function markTaskDoneRemote(portalCode,taskId){
+  if(!sb)return null;
+  try{
+    const{data,error}=await sb.rpc('mark_task_done',{p_portal_code:portalCode,p_task_id:taskId});
+    if(error){console.warn('mark_task_done error:',error);return null;}
+    return data;
+  }catch(e){console.warn('Supabase unreachable for mark_task_done:',e);return null;}
+}
+// Maps the JSON shape returned by get_client_portal onto this app's
+// existing client-object shape, mutating in place.
+function applyLivePortalData(c,live){
+  c.name=live.client.name||c.name;
+  c.address=live.client.address||c.address;
+  c.phone=live.client.phone||c.phone;
+  c.email=live.client.email||c.email;
+  c.tasks=(live.tasks||[]).map(t=>({
+    id:t.id,name:t.name,icon:t.icon||'wrench',freqDays:t.freq_days,nextDue:t.next_due,
+    history:(t.history||[]).map(d=>fD(d.slice(0,10))),
+    link:t.link_name?{name:t.link_name,url:t.link_url,store:t.link_store}:null
+  }));
+  c.paints=(live.paints||[]).map(p=>({area:p.area,name:p.name,brand:p.brand,hex:p.hex,type:p.type,sheen:p.sheen}));
+  c.equipment=(live.equipment||[]).map(e=>({id:e.id,category:e.category,name:e.name,model:e.model,specs:(e.specs||[]).map(s=>({label:s.label,value:s.value}))}));
+  c.warranties=(live.warranties||[]).map(w=>({id:w.id,item:w.item,brand:w.brand,coverage:w.coverage,expires:w.expires,files:[]}));
+  c.links=(live.reorder_links||[]).map(r=>({id:r.id,name:r.name,url:r.url,store:r.store,note:r.note}));
+  c._liveVendors=(live.vendors||[]).map(v=>({id:v.id,name:v.name,trade:v.trade,phone:v.phone,email:v.email,website:v.website,note:v.note}));
+  c._live=true;
+}
+async function loadLiveClientData(id){
+  const c=gC(id);if(!c)return false;
+  const live=await fetchClientPortal(c.portalCode);
+  if(live){applyLivePortalData(c,live);return true;}
+  c._live=false;return false;
+}
+
+// ═══════════════════════════════════════════
+// DATA — local demo/seed data. Used as-is when Supabase is
+// unreachable or a client has no live data yet, so the app keeps
+// working standalone.
+// ═══════════════════════════════════════════
+const DB = {
+  companySettings:{
+    companyName:"Mitchell Construction & Design",
+    tagline:"Building an Elevated Experience",
+    email:"info@mitchellconstructionco.net",
+    phone:"417.322.6789",
+    amazonTag:"mitchellcd-20",
+    builderTrendUrl:"",
+    logoDataUrl:null,
+    logoSizePct:100,
+    programColor:"#9c968a",
+    navColor:"#ffffff",
+    team:[
+      {name:"John Mitchell",email:"john@mitchellconstructionco.net",role:"Owner"},
+      {name:"Kennedy Adamson",email:"kennedy@mitchellconstructionco.net",role:"Business Dev."},
+      {name:"Bre Mitchell",email:"bre@mitchellconstructionco.net",role:"Operations"},
+    ]
+  },
+  vendorTrades:["HVAC","Plumbing","Pest Control","Electrical","Roofing","Chimney","General"],
+  vendors:[
+    {id:1,name:"Aire Serv of Springfield",trade:"HVAC",phone:"(417) 555-1100",email:"info@aireserv-sgf.com",note:"Preferred partner — 10% discount for MC&D clients",website:"https://www.aireserv.com"},
+    {id:2,name:"Roto-Rooter Springfield",trade:"Plumbing",phone:"(417) 555-2200",email:"sgf@rotorooter.com",note:"24/7 emergency service available",website:""},
+    {id:3,name:"Ozark Pest Solutions",trade:"Pest Control",phone:"(417) 555-3300",email:"hello@ozarkpest.com",note:"Quarterly service plans available",website:""},
+    {id:4,name:"Springfield Electric Co.",trade:"Electrical",phone:"(417) 555-4400",email:"service@sgfelectric.com",note:"Licensed & bonded",website:""},
+    {id:5,name:"All-Pro Roofing",trade:"Roofing",phone:"(417) 555-5500",email:"quotes@allproof.com",note:"GAF certified installer",website:""},
+    {id:6,name:"Clean Sweep Chimney",trade:"Chimney",phone:"(417) 555-6600",email:"sweep@cleanchimney.com",note:"Annual inspections & sweeping",website:""},
+  ],
+  clients:[
+    {
+      id:1,name:"Miller, James",address:"412 Oakwood Drive, Springfield MO 65807",phone:"(417) 555-0142",email:"james.miller@email.com",
+      portalCode:"miller-james",emailRemindDays:7,avatarBg:"#eeeeec",avatarColor:"#1c1c1c",vendorIds:[1,2,3,6],
+      tasks:[
+        {id:1,name:"Whole-house filter change",icon:"droplet",freqDays:90,nextDue:dFN(6),history:["Jan 15, 2026","Oct 18, 2025","Jul 22, 2025"],
+          link:{name:"Whole House Filter — 20×25×4 (2-pack)",url:"https://www.amazon.com/dp/B00ND7EQV0",store:"Amazon"}},
+        {id:2,name:"Refrigerator water filter",icon:"droplet",freqDays:180,nextDue:dFN(45),history:["Nov 2, 2025"],
+          link:{name:"Samsung Refrigerator Water Filter (DA29-00020B)",url:"https://www.amazon.com/dp/B0090WOFYE",store:"Amazon"}},
+        {id:3,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(6),history:["Jan 15, 2026","Oct 18, 2025"],
+          link:{name:"HVAC Filter — 20×25×1 (6-pack)",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
+        {id:4,name:"Water softener salt",icon:"box",freqDays:30,nextDue:dFN(2),history:["May 1, 2026","Apr 2, 2026"],
+          link:{name:"Morton Clean & Protect Salt (40 lb)",url:"https://www.homedepot.com/p/12345",store:"Home Depot"}},
+        {id:5,name:"Chimney inspection",icon:"flame",freqDays:365,nextDue:dFN(4),history:["Jun 5, 2025"],link:null},
+        {id:6,name:"Pest control",icon:"bug",freqDays:90,nextDue:dFN(61),history:["Mar 1, 2026"],link:null},
+        {id:7,name:"Dryer vent cleaning",icon:"wind",freqDays:365,nextDue:dFN(180),history:[],link:null},
+      ],
+      links:[
+        {id:1,name:"9V Batteries (smoke detectors)",note:"Energizer, 4-pack",url:"https://www.amazon.com/dp/B00E4L2NHW",store:"Amazon"},
+      ],
+      paints:[
+        {area:"Main walls",name:"SW 7015 Repose Gray",hex:"#E8DDD0",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},
+        {area:"Trim & doors",name:"SW 7012 Creamy",hex:"#F5F2EE",brand:"Sherwin-Williams",type:"Paint",sheen:"Semi-Gloss"},
+        {area:"Accent wall",name:"SW 6241 Krypton",hex:"#5B7FA6",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},
+        {area:"Front door",name:"Ipswich Pine 244",hex:"#5A3A28",brand:"Minwax",type:"Stain",sheen:"Semi-Transparent"},
+      ],
+      equipment:[
+        {id:1,category:"HVAC",name:"HVAC System",model:"Carrier 24ACC636A003",specs:[]},
+        {id:2,category:"Water Heater",name:"Water Heater",model:"Rheem PROG50-38N RH67",specs:[]},
+        {id:3,category:"Plumbing",name:"Whole-House Filter",model:"",specs:[{label:"Filter size",value:"20 × 25 × 4 in"}]},
+        {id:4,category:"Roofing",name:"Roof",model:"GAF Timberline HDZ",specs:[{label:"Installed",value:"2019"}]},
+        {id:5,category:"Electrical",name:"Electrical Panel",model:"200A Square D QO130L200PG",specs:[]},
+      ],
+      warranties:[
+        {id:1,item:"HVAC System",brand:"Carrier",expires:"2029-06-01",coverage:"10-yr parts, 1-yr labor",files:[]},
+        {id:2,item:"Roof",brand:"GAF",expires:"2044-08-15",coverage:"25-yr limited transferable",files:[{name:"GAF_Warranty_2019.pdf",size:"1.2 MB",uploaded:"Jun 1, 2026"}]},
+        {id:3,item:"Water Heater",brand:"Rheem",expires:"2029-03-01",coverage:"6-yr tank, 1-yr parts",files:[]},
+      ],
+      homeFiles:[
+        {id:1,name:"Final_Inspection_Report.pdf",size:"2.4 MB",category:"Inspection",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"},
+        {id:2,name:"Floor_Plan_As_Built.pdf",size:"4.1 MB",category:"Plans",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"},
+      ],
+      notes:"Gate code: 4421. Spare key under back porch planter. Dog named Biscuit — friendly.",
+    },
+    {
+      id:2,name:"Santos, Rosa",address:"78 Maple Avenue, Springfield MO 65804",phone:"(417) 555-0198",email:"rosa.santos@email.com",
+      portalCode:"santos-rosa",emailRemindDays:5,avatarBg:"#eef1e8",avatarColor:"#4c6b3f",vendorIds:[1,5],
+      tasks:[
+        {id:1,name:"Gutter cleaning",icon:"leaf",freqDays:180,nextDue:dFN(19),history:["Nov 20, 2025"],link:null},
+        {id:2,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(45),history:["Feb 14, 2026"],
+          link:{name:"HVAC Filter — 16×20×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
+        {id:3,name:"Lawn fertilizer",icon:"leaf",freqDays:60,nextDue:dFN(40),history:["Apr 1, 2026"],
+          link:{name:"Scotts Turf Builder (Spring/Summer)",url:"https://www.homedepot.com/p/54321",store:"Home Depot"}},
+        {id:4,name:"Smoke detector test",icon:"bell",freqDays:180,nextDue:dFN(90),history:[],link:null},
+      ],
+      links:[],
+      paints:[
+        {area:"Exterior siding",name:"BM HC-172 Revere Pewter",hex:"#C2B89A",brand:"Benjamin Moore",type:"Paint",sheen:"Satin"},
+        {area:"Interior walls",name:"BM OC-17 White Dove",hex:"#F4F0E8",brand:"Benjamin Moore",type:"Paint",sheen:"Eggshell"},
+      ],
+      equipment:[
+        {id:1,category:"HVAC",name:"HVAC System",model:"Trane XR15 4TTR5036E1",specs:[{label:"Filter size",value:"16 × 20 × 1 in"}]},
+        {id:2,category:"Roofing",name:"Roof",model:"Owens Corning Duration",specs:[{label:"Installed",value:"2021"}]},
+      ],
+      warranties:[
+        {id:1,item:"HVAC System",brand:"Trane",expires:"2031-05-01",coverage:"10-yr parts & labor",files:[]},
+        {id:2,item:"Roof",brand:"Owens Corning",expires:"2046-04-01",coverage:"25-yr Platinum Protection",files:[]},
+      ],
+      homeFiles:[{id:1,name:"Project_Completion_Photos.jpg",size:"6.2 MB",category:"Photos",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"}],
+      notes:"Alarm code: 2-4-6-8. No pets.",
+    },
+    {
+      id:3,name:"Chen, Patricia",address:"9 Birch Lane, Springfield MO 65802",phone:"(417) 555-0271",email:"patricia.chen@email.com",
+      portalCode:"chen-patricia",emailRemindDays:3,avatarBg:"#f6f0e3",avatarColor:"#8a6a2e",vendorIds:[1,3],
+      tasks:[
+        {id:1,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(-5),history:["Feb 24, 2026"],
+          link:{name:"HVAC Filter — 14×18×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
+        {id:2,name:"Pest control",icon:"bug",freqDays:90,nextDue:dFN(68),history:[],link:null},
+        {id:3,name:"Dryer vent cleaning",icon:"wind",freqDays:365,nextDue:dFN(165),history:[],link:null},
+      ],
+      links:[],
+      paints:[
+        {area:"Living room",name:"SW 7029 Agreeable Gray",hex:"#D4CCBF",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},
+        {area:"Kitchen",name:"SW 6119 Believable Buff",hex:"#D4C4A0",brand:"Sherwin-Williams",type:"Paint",sheen:"Satin"},
+      ],
+      equipment:[{id:1,category:"HVAC",name:"HVAC System",model:"Lennox XC21-036-230",specs:[{label:"Filter size",value:"14 × 18 × 1 in"}]}],
+      warranties:[{id:1,item:"HVAC System",brand:"Lennox",expires:"2032-01-15",coverage:"10-yr parts",files:[]}],
+      homeFiles:[],
+      notes:"Access code for side gate: 7890.",
+    },
+    {
+      id:4,name:"Thompson, Will",address:"3301 Cedar Blvd, Springfield MO 65810",phone:"(417) 555-0344",email:"will.thompson@email.com",
+      portalCode:"thompson-will",emailRemindDays:7,avatarBg:"#eceaf0",avatarColor:"#55508a",vendorIds:[1],
+      tasks:[
+        {id:1,name:"HVAC filter replacement",icon:"snowflake",freqDays:90,nextDue:dFN(40),history:["Mar 1, 2026"],
+          link:{name:"HVAC Filter — 20×20×1",url:"https://www.amazon.com/dp/B073HR2M6M",store:"Amazon"}},
+        {id:2,name:"Irrigation system check",icon:"droplet",freqDays:180,nextDue:dFN(120),history:[],link:null},
+        {id:3,name:"Smoke detector test",icon:"bell",freqDays:180,nextDue:dFN(90),history:[],
+          link:{name:"9V Batteries (Energizer, 4-pack)",url:"https://www.amazon.com/dp/B00E4L2NHW",store:"Amazon"}},
+        {id:4,name:"Garage door lube",icon:"door",freqDays:365,nextDue:dFN(200),history:[],link:null},
+      ],
+      links:[],
+      paints:[{area:"Exterior",name:"SW 6119 Believable Buff",hex:"#D4C4A0",brand:"Sherwin-Williams",type:"Paint",sheen:"Satin"},{area:"Master BR",name:"SW 6258 Naval",hex:"#334E76",brand:"Sherwin-Williams",type:"Paint",sheen:"Eggshell"},{area:"Deck",name:"Woodland Cedar",hex:"#7A4A2E",brand:"Cabot",type:"Stain",sheen:"Solid"}],
+      equipment:[{id:1,category:"HVAC",name:"HVAC System",model:"Goodman GSX160361",specs:[{label:"Filter size",value:"20 × 20 × 1 in"}]},{id:2,category:"Roofing",name:"Roof",model:"GAF Timberline HDZ",specs:[{label:"Installed",value:"2022"}]}],
+      warranties:[{id:1,item:"HVAC System",brand:"Goodman",expires:"2033-09-01",coverage:"Lifetime heat exchanger, 10-yr parts",files:[]},{id:2,item:"Roof",brand:"GAF",expires:"2047-06-01",coverage:"25-yr limited transferable",files:[]}],
+      homeFiles:[{id:1,name:"Building_Permit.pdf",size:"0.6 MB",category:"Permits",uploaded:"Jun 1, 2026",uploadedBy:"MC&D"}],
+      notes:"Alarm code: 5-5-1-2. Two dogs — Milo and Penny.",
+    }
+  ]
+};
+
+let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData={};
+</script>
+
+<div id="app">
+<div id="sidebar">
+  <div class="logo-wrap" id="logo-wrap"></div>
+  <div class="logo-tag" style="padding:10px 20px 0">HOME CARE PORTAL</div>
+  <div id="adm-nav">
+    <div class="nav-lbl">Main</div>
+    <div class="nav-item active" id="nav-dashboard" onclick="gP('dashboard')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></span>Dashboard</div>
+    <div class="nav-item" id="nav-emails" onclick="gP('emails')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>Email Reminders</div>
+    <div class="nav-item" id="nav-vendors" onclick="gP('vendors')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Vendor Directory</div>
+    <div class="nav-item" id="nav-settings" onclick="gP('settings')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>Company Settings</div>
+  </div>
+  <div id="cli-nav" style="display:none">
+    <div class="nav-lbl">My Portal</div>
+    <div class="nav-item active" id="cnav-home" onclick="sPT('home')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span>My Home</div>
+    <div class="nav-item" id="cnav-tasks" onclick="sPT('tasks')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V2h6v2"/><path d="M9 13l2 2 4-4"/></svg></span>My Maintenance</div>
+    <div class="nav-item" id="cnav-reorder" onclick="sPT('reorder')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M9 15l6-6"/><path d="M13 6.5l1-1a3.5 3.5 0 1 1 5 5l-2 2"/><path d="M11 17.5l-1 1a3.5 3.5 0 1 1-5-5l2-2"/></svg></span>Reorder Supplies</div>
+    <div class="nav-item" id="cnav-paint" onclick="sPT('paint')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="4" y="4" width="16" height="16" rx="4"/><circle cx="9" cy="9" r="1.3"/><circle cx="15" cy="9" r="1.3"/><circle cx="9" cy="15" r="1.3"/><circle cx="15" cy="15" r="1.3"/></svg></span>Paint &amp; Stain</div>
+    <div class="nav-item" id="cnav-equip" onclick="sPT('equip')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Equipment</div>
+    <div class="nav-item" id="cnav-warranty" onclick="sPT('warranty')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg></span>Warranties</div>
+    <div class="nav-item" id="cnav-files" onclick="sPT('files')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>Home Files</div>
+    <div class="nav-item" id="cnav-vendors" onclick="sPT('vendors')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Find a Vendor</div>
+    <div class="nav-item" id="cnav-notes" onclick="sPT('notes')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Home Notes</div>
+  </div>
+  <div class="sb-footer">
+    <div style="font-size:11px;font-weight:700;color:#1c1c1c">Mitchell Construction & Design</div>
+    <div class="sb-tagline">"Building an Elevated Experience"</div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="topbar">
+    <div><div class="tb-title" id="tb-title">Dashboard</div><div class="tb-sub" id="tb-sub">Mitchell Home Care Portal</div></div>
+    <div class="tb-actions" id="tb-act"></div>
+  </div>
+  <div class="page active" id="page-dashboard"><div class="pg-body" id="db-body"></div></div>
+  <div class="page" id="page-emails"><div class="pg-body" id="em-body"></div></div>
+  <div class="page" id="page-vendors"><div class="pg-body" id="vnd-body"></div></div>
+  <div class="page" id="page-settings"><div class="pg-body" id="set-body"></div></div>
+  <div class="page" id="page-client-detail">
+    <div id="cd-hero"></div>
+    <div class="tab-bar" id="cd-tabs"></div>
+    <div style="flex:1;overflow-y:auto;padding:20px" id="cd-body"></div>
+  </div>
+  <div class="page" id="page-portal">
+    <div id="pt-hero"></div>
+    <div style="flex:1;overflow-y:auto" id="pt-body"></div>
+  </div>
+  <div class="page" id="page-add-client">
+    <div class="step-bar" id="ac-steps"></div>
+    <div style="flex:1;overflow-y:auto;padding:22px;max-width:740px;width:100%" id="ac-body2"></div>
+  </div>
+</div>
+</div>
+
+<div id="print-area"></div>
+
+<div class="modal-bg" id="modal-bg" onclick="if(event.target===this)cM()">
+  <div class="modal" id="modal-inner"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// ROUTING
+// ═══════════════════════════════════════════
+function rLogo(){
+  const s=DB.companySettings;
+  const wrap=document.getElementById('logo-wrap');if(!wrap)return;
+  if(s.logoDataUrl){
+    const h=Math.round(40*((s.logoSizePct||100)/100));
+    wrap.innerHTML=`<img src="${s.logoDataUrl}" style="max-height:${h}px;max-width:100%;object-fit:contain">`;
+  }else{
+    wrap.innerHTML=`<div><div class="logo-name">MITCHELL</div><div class="logo-rule"></div><div class="logo-sub">CONSTRUCTION &amp; DESIGN</div></div>`;
+  }
+}
+let clientOnlyMode=false;
+async function initClientOnlyMode(code){
+  clientOnlyMode=true;
+  document.getElementById('sidebar').querySelector('#adm-nav').style.display='none';
+  document.getElementById('topbar').style.display='none';
+  const shell={id:'remote',name:'',address:'',phone:'',email:'',portalCode:code,emailRemindDays:5,tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[],notes:'',status:'Active'};
+  DB.clients.push(shell);
+  cid=shell.id;view='client';
+  document.getElementById('cli-nav').style.display='block';
+  const ok=await loadLiveClientData(shell.id);
+  if(!ok){
+    document.body.innerHTML='<div style="max-width:420px;margin:80px auto;text-align:center;font-family:\'Inter\',sans-serif;color:#4a4a46;padding:0 20px"><div style="font-size:15px;font-weight:800;margin-bottom:8px">We couldn\'t find that portal link</div><div style="font-size:13px;color:#8f8d86">Double check the link, or contact Mitchell Construction &amp; Design if you think this is a mistake.</div></div>';
+    return;
+  }
+  gP('portal');rPortal(shell.id);sPT('home');
+}
+window.onload=()=>{
+  applyBrandingVars();rLogo();
+  const portalCode=new URLSearchParams(location.search).get('portal');
+  if(portalCode){initClientOnlyMode(portalCode);return;}
+  rSB();rDB();rEM();rVND();rSET();setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
+};
+function setTB(t,s,a){document.getElementById('tb-title').textContent=t;document.getElementById('tb-sub').textContent=s;document.getElementById('tb-act').innerHTML=a||''}
+function gP(p){
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  const el=document.getElementById('page-'+p);if(el)el.classList.add('active');
+  page=p;
+  ['dashboard','emails','vendors','settings'].forEach(id=>{const n=document.getElementById('nav-'+id);if(n)n.classList.toggle('active',p===id)});
+  if(p==='dashboard')setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
+  else if(p==='emails')setTB('Email Reminders','Automated reminders via your email service','');
+  else if(p==='vendors')setTB('Vendor Directory','Trusted contractors & service providers',`<button class="btn btn-blk btn-sm" onclick="oAddVendor()">${ic('plus',12)} Add Vendor</button>`);
+  else if(p==='settings')setTB('Company Settings','Amazon Associates, branding & defaults','');
+  else if(p==='add-client'){acStep=1;acData={tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[]};setTB('Add New Client','Set up a new client portal',`<button class="btn btn-sm" onclick="gP('dashboard')">${ic('x',12)} Cancel</button>`);rAcWiz();}
+}
+function selC(id){
+  cid=id;rSB();rCDet(id);rPortal(id);
+  if(view==='admin'){gP('client-detail');setTB(gC(id).name,gC(id).address,`<button class="btn btn-tan btn-sm" onclick="setView('client')">${ic('eye',12)} Client View</button> <button class="btn btn-sm" onclick="printRecord(${id})">${ic('printer',12)} Print Record</button> <button class="btn btn-blk btn-sm" onclick="oAddTask()">${ic('plus',12)} Add Task</button>`);}
+  else{ptab='home';gP('portal');}
+}
+function setView(v){
+  view=v;
+  document.getElementById('adm-nav').style.display=v==='admin'?'block':'none';
+  document.getElementById('cli-nav').style.display=v==='client'?'block':'none';
+  if(v==='client'){
+    ptab='home';gP('portal');sPT('home');
+    const c=gC(cid),fn=c.name.split(',')[1]?.trim()||c.name;
+    setTB('Previewing as Client',`This is what ${fn} sees when they log in`,`<button class="btn btn-blk btn-sm" onclick="setView('admin')">${ic('arrowleft',12)} Back to Admin</button>`);
+    loadLiveClientData(cid).then(()=>{if(view==='client'){rPortal(cid);rPB(cid,ptab);}});
+    rPortal(cid);
+  }
+  else{rCDet(cid);gP('client-detail');setTB(gC(cid).name,gC(cid).address,`<button class="btn btn-tan btn-sm" onclick="setView('client')">${ic('eye',12)} Client View</button> <button class="btn btn-sm" onclick="printRecord(${cid})">${ic('printer',12)} Print Record</button> <button class="btn btn-blk btn-sm" onclick="oAddTask()">${ic('plus',12)} Add Task</button>`);}
+}
+function oM(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal-bg').classList.add('open')}
+function cM(){document.getElementById('modal-bg').classList.remove('open')}
+
+// ═══════════════════════════════════════════
+// SIDEBAR — the client list now lives on the Dashboard as project cards,
+// so the persistent sidebar only carries top-level nav. Kept as a no-op
+// stub since a few call sites still reference it after data edits.
+// ═══════════════════════════════════════════
+function rSB(){}
+
+// ═══════════════════════════════════════════
+// DASHBOARD — project cards, one per client home
+// ═══════════════════════════════════════════
+let dbTab='active';
+function projStats(c){
+  const open=c.tasks.length;
+  const overdue=c.tasks.filter(t=>dU(t.nextDue)<0).length;
+  const onSchedule=open===0?100:Math.round(((open-overdue)/open)*100);
+  return{open,overdue,onSchedule};
+}
+function setDbTab(t){dbTab=t;rDB();}
+function setClientStatus(id,val){gC(id).status=val;rDB();}
+function rDB(){
+  const all=DB.clients.flatMap(c=>c.tasks.map(t=>({...t,client:c})));
+  const od=all.filter(t=>dU(t.nextDue)<0),soon=all.filter(t=>{const d=dU(t.nextDue);return d>=0&&d<=7;});
+  const nActive=DB.clients.filter(c=>c.status!=='Closed').length,nClosed=DB.clients.filter(c=>c.status==='Closed').length;
+  const shown=DB.clients.filter(c=>dbTab==='all'||((c.status||'Active')===(dbTab==='active'?'Active':'Closed')));
+
+  document.getElementById('db-body').innerHTML=`
+    <div class="g4" style="margin-bottom:18px">
+      <div class="metric"><div class="metric-v">${all.length}</div><div class="metric-l">Open Tasks</div></div>
+      <div class="metric"><div class="metric-v" style="color:${soon.length?'#8a6a2e':'#1c1c1c'}">${soon.length}</div><div class="metric-l">Due This Week</div></div>
+      <div class="metric"><div class="metric-v" style="color:${od.length?'#9a3b3b':'#1c1c1c'}">${od.length}</div><div class="metric-l">Overdue</div></div>
+      <div class="metric"><div class="metric-v">${DB.clients.length}</div><div class="metric-l">Total Clients</div></div>
+    </div>
+
+    <div class="seg" style="margin-bottom:18px">
+      <button onclick="setDbTab('active')" class="${dbTab==='active'?'active':''}">Active (${nActive})</button>
+      <button onclick="setDbTab('closed')" class="${dbTab==='closed'?'active':''}">Closed (${nClosed})</button>
+      <button onclick="setDbTab('all')" class="${dbTab==='all'?'active':''}">All (${DB.clients.length})</button>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+      ${shown.map(c=>{
+        const {open,overdue,onSchedule}=projStats(c);
+        const barColor=overdue>0?'#9a3b3b':onSchedule<100?'#ad8a3f':'#2c2c2a';
+        return`
+        <div class="card proj-card" style="cursor:pointer;padding:16px 18px" onclick="selC(${c.id})">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px">
+            <div style="font-size:14.5px;font-weight:800;line-height:1.3">${c.name}</div>
+            <select class="status-pill" onclick="event.stopPropagation()" onchange="event.stopPropagation();setClientStatus(${c.id},this.value)">
+              <option${(c.status||'Active')==='Active'?' selected':''}>Active</option>
+              <option${c.status==='Closed'?' selected':''}>Closed</option>
+            </select>
+          </div>
+          <div style="font-size:11.5px;color:#8f8d86;line-height:1.5;margin-bottom:11px">${c.address} · ${c.phone}</div>
+          <div class="prog" style="margin-bottom:8px"><div class="prog-f" style="width:${onSchedule}%;background:${barColor}"></div></div>
+          <div style="font-size:11.5px;color:#8f8d86">
+            <strong style="color:#1c1c1c">${open}</strong> open · <strong style="color:${overdue>0?'#9a3b3b':'#1c1c1c'}">${overdue}</strong> overdue · <strong style="color:#1c1c1c">${onSchedule}%</strong> on schedule
+          </div>
+        </div>`;
+      }).join('')||`<div style="grid-column:1/-1;padding:30px;text-align:center;color:#8f8d86;font-size:13px">No ${dbTab==='all'?'':dbTab+' '}clients yet.</div>`}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════
+// EMAIL REMINDERS
+// ═══════════════════════════════════════════
+function rEM(){
+  const pending=DB.clients.flatMap(c=>c.tasks.filter(t=>{const d=dU(t.nextDue);return d>=0&&d<=c.emailRemindDays;}).map(t=>({...t,client:c})));
+  document.getElementById('em-body').innerHTML=`
+    <div class="alert alert-info" style="margin-bottom:16px"><span style="font-size:18px">${ic('info',18)}</span><div><strong>Email service not yet connected.</strong> Connect SendGrid, Mailchimp, or similar to activate automated reminders. Each client's unique portal link is included in every email — no login required.</div></div>
+    <div class="g2" style="margin-bottom:16px">
+      <div class="card"><div class="card-hd">${ic('clipboard',13)} Pending Reminders (${pending.length})</div>
+        ${pending.length===0?'<div style="font-size:13px;color:#8f8d86;padding:10px 0">No reminders pending right now.</div>':pending.map(t=>`<div class="row"><span>${ic(t.icon,18)}</span><div style="flex:1"><div style="font-size:13px;font-weight:600">${t.client.name}</div><div style="font-size:11px;color:#8f8d86">${t.name} · due ${fD(t.nextDue)}</div></div><button class="btn btn-blk btn-sm" onclick="prevEmail(${t.client.id},${t.id})">Preview</button></div>`).join('')}
+      </div>
+      <div class="card"><div class="card-hd">${ic('settings',13)} Reminder Windows</div>
+        ${DB.clients.map(c=>`<div class="row">${ava(c,28)}<div style="flex:1"><div style="font-size:13px;font-weight:600">${c.name}</div><div style="font-size:11px;color:#8f8d86">${c.email}</div></div><span style="font-size:11px;color:#1c1c1c;font-weight:700">${c.emailRemindDays}d before</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="card"><div class="card-hd">${ic('mail',13)} Email Template</div>
+      <div style="background:#f8f8f6;border:1px solid #e8e6e1;border-radius:9px;padding:18px;font-size:13px;line-height:1.7;max-width:580px">
+        <div style="font-weight:800;font-size:15px;color:#1c1c1c;margin-bottom:4px">Your Home Maintenance Reminder</div>
+        <div style="font-size:11px;color:#8f8d86;margin-bottom:12px">From: ${DB.companySettings.email}</div>
+        <div>Hi <strong>[First Name]</strong>, your <strong>[Task Name]</strong> is due on <strong>[Date]</strong>.</div>
+        <div style="margin:12px 0;background:#1c1c1c;color:#fff;padding:10px 18px;border-radius:9px;text-align:center;font-weight:700;display:inline-block">View My Home Portal →</div>
+        <div style="font-size:11px;color:#8f8d86;font-style:italic">"${DB.companySettings.tagline}" — ${DB.companySettings.companyName}</div>
+      </div>
+    </div>`;
+}
+function prevEmail(cid2,tid){
+  const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
+  oM(`<div class="modal-title">${ic('mail',15)} Email Preview — ${c.name}</div>
+    <div style="background:#f8f8f6;border:1px solid #e8e6e1;border-radius:10px;padding:18px;font-size:13px;line-height:1.7">
+      <div style="font-size:11px;color:#8f8d86;margin-bottom:10px"><strong>To:</strong> ${c.email} &nbsp; <strong>Subject:</strong> Reminder: ${t.name} is due ${fD(t.nextDue)}</div>
+      <div>Hi <strong>${c.name.split(',')[1]?.trim()||c.name}</strong>,</div>
+      <div style="margin-top:8px">Your <strong>${t.name}</strong> is due on <strong>${fD(t.nextDue)}</strong>.${t.link?` You can reorder what you need directly here — no need to remember the brand or size.`:''}</div>
+      <div style="margin:12px 0;background:#1c1c1c;color:#fff;padding:10px 18px;border-radius:9px;text-align:center;font-weight:700">mitchell-homecare.com/portal/${c.portalCode}</div>
+      <div style="font-size:11px;color:#8f8d86;font-style:italic">— ${DB.companySettings.companyName}</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Close</button><button class="btn btn-blk btn-sm" onclick="alert('Connect email service to send.');cM()">Send Now</button></div>`);
+}
+
+// ═══════════════════════════════════════════
+// VENDOR DIRECTORY
+// ═══════════════════════════════════════════
+function rVND(){
+  document.getElementById('vnd-body').innerHTML=`
+    <div class="alert alert-lime" style="margin-bottom:16px"><span>${ic('checkc',15)}</span><div>Vendors added here automatically appear in each client's "Find a Vendor" section — no extra setup needed per client.</div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px" id="vnd-grid"></div>`;
+  rVG();
+}
+function rVG(){
+  document.getElementById('vnd-grid').innerHTML=DB.vendors.map(v=>`
+    <div class="vendor-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:10px;font-weight:700;color:#9c968a;text-transform:uppercase;letter-spacing:.06em">${ic(tic(v.trade),12)} ${v.trade}</div>
+        <button onclick="delV(${v.id})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:16px;line-height:1">×</button>
+      </div>
+      <div style="font-size:13px;font-weight:700">${v.name}</div>
+      <div style="font-size:12px">${ic('phone',12)} ${v.phone}</div>
+      <div style="font-size:12px;color:#1c1c1c">${ic('mail',12)} ${v.email}</div>
+      ${v.note?`<div style="font-size:11px;color:#8f8d86">${v.note}</div>`:''}
+      ${v.website?`<a href="${v.website}" target="_blank" style="font-size:11px;color:#1c1c1c;font-weight:700;text-decoration:none">↗ Website</a>`:''}
+    </div>`).join('');
+}
+function delV(id){DB.vendors=DB.vendors.filter(v=>v.id!==id);rVG();}
+function oAddVendor(){
+  oM(`<div class="modal-title">${ic('wrench',15)} Add Vendor</div>
+    <div class="fr"><div class="fg"><label class="fl">Company name *</label><input class="fi" id="vn-n" placeholder="Company name"></div>
+    <div class="fg"><label class="fl">Trade *</label><select class="fi" id="vn-t" onchange="if(this.value==='__new__')addVendorTrade()">${DB.vendorTrades.map(t=>`<option>${t}</option>`).join('')}<option value="__new__">+ Add new trade…</option></select></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Phone</label><input class="fi" id="vn-p" placeholder="(417) 555-0000"></div>
+    <div class="fg"><label class="fl">Email</label><input class="fi" id="vn-e" placeholder="info@company.com"></div></div>
+    <div class="fg"><label class="fl">Website</label><input class="fi" id="vn-w" placeholder="https://..."></div>
+    <div class="fg"><label class="fl">Note</label><input class="fi" id="vn-no" placeholder="Preferred partner, 24/7 service…"></div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savV()">Save Vendor</button></div>`);
+}
+function addVendorTrade(){
+  const n=prompt('New trade category (e.g. "Landscaping", "Pool Service")');
+  if(!n)return void(document.getElementById('vn-t').value=DB.vendorTrades[0]);
+  const trimmed=n.trim();
+  if(!trimmed)return;
+  if(!DB.vendorTrades.some(t=>t.toLowerCase()===trimmed.toLowerCase()))DB.vendorTrades.push(trimmed);
+  const sel=document.getElementById('vn-t');
+  sel.innerHTML=DB.vendorTrades.map(t=>`<option${t===trimmed?' selected':''}>${t}</option>`).join('')+'<option value="__new__">+ Add new trade…</option>';
+}
+function savV(){const n=document.getElementById('vn-n').value.trim();if(!n)return alert('Enter a company name.');DB.vendors.push({id:Date.now(),name:n,trade:document.getElementById('vn-t').value,phone:document.getElementById('vn-p').value,email:document.getElementById('vn-e').value,website:document.getElementById('vn-w').value,note:document.getElementById('vn-no').value});cM();rVG();}
+
+// ═══════════════════════════════════════════
+// COMPANY SETTINGS (Amazon Associates tag + branding)
+// ═══════════════════════════════════════════
+function rSET(){
+  const s=DB.companySettings;
+  document.getElementById('set-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px">
+      <div class="card"><div class="card-hd">${ic('tag',13)} Amazon Associates</div>
+        <div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Every reorder link you mark as "Amazon" for a client automatically gets your Associates tag appended, so purchases made from the portal earn a commission — at no extra step for you or the client.</div>
+        <div class="fg"><label class="fl">Associates tracking ID</label><input class="fi" id="set-tag" value="${s.amazonTag}" placeholder="yourtag-20"></div>
+        <div style="font-size:11px;color:#8f8d86;margin-bottom:12px">Example: an Amazon link becomes <span style="font-family:monospace">…?tag=${s.amazonTag||'yourtag-20'}</span> automatically.</div>
+        <button class="btn btn-blk btn-sm" onclick="saveSet()">Save Settings</button>
+      </div>
+      <div class="card"><div class="card-hd">${ic('home',13)} Company Info</div>
+        <div class="fg"><label class="fl">Company name</label><input class="fi" id="set-name" value="${s.companyName}"></div>
+        <div class="fg"><label class="fl">Tagline</label><input class="fi" id="set-tag2" value="${s.tagline}"></div>
+        <div class="fr"><div class="fg"><label class="fl">Email</label><input class="fi" id="set-email" value="${s.email}"></div><div class="fg"><label class="fl">Phone</label><input class="fi" id="set-phone" value="${s.phone}"></div></div>
+        <button class="btn btn-blk btn-sm" onclick="saveSet()">Save Settings</button>
+      </div>
+      <div class="card"><div class="card-hd">${ic('claim',13)} Warranty Claims</div>
+        <div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Paste your BuilderTrend warranty claim form link. It shows up as a "File a Warranty Claim" button on every client's Warranties page.</div>
+        <div class="fg"><label class="fl">BuilderTrend claim link</label><input class="fi" id="set-bt" value="${s.builderTrendUrl||''}" placeholder="https://your-account.buildertrend.net/..."></div>
+        <button class="btn btn-blk btn-sm" onclick="saveSet()">Save Settings</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hd">${ic('palette',13)} Branding</div>
+      <div style="display:flex;gap:20px;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap">
+        <div style="width:76px;height:76px;border:1.5px solid #e8e6e1;border-radius:11px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;background:#fff">
+          ${s.logoDataUrl?`<img src="${s.logoDataUrl}" style="max-width:90%;max-height:90%;object-fit:contain">`:`<span style="font-size:10px;color:#8f8d86;text-align:center;padding:4px">No logo</span>`}
+        </div>
+        <div style="flex:1;min-width:220px">
+          <label class="fl">Logo image</label>
+          <input type="file" accept="image/*" id="set-logo-file" class="fi" style="padding:7px" onchange="handleLogoUpload(this)">
+          <div style="font-size:11px;color:#8f8d86;margin-top:6px">Shown alone in the sidebar, replacing the "MITCHELL" wordmark. ${s.logoDataUrl?'<span style="color:#9a3b3b;cursor:pointer;font-weight:700" onclick="clearLogo()">Remove logo</span>':''}</div>
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">Logo size in the sidebar — <span id="logo-pct-label">${s.logoSizePct}%</span></label>
+        <input type="range" min="50" max="200" step="5" value="${s.logoSizePct}" id="set-logo-size" style="width:100%" oninput="document.getElementById('logo-pct-label').textContent=this.value+'%';previewLogoSize(this.value)">
+      </div>
+      <div class="fr">
+        <div class="fg"><label class="fl">Program color — accents, active states</label>
+          <div style="display:flex;gap:8px"><input type="color" id="set-accent-pick" value="${s.programColor}" style="width:44px;height:38px;border:1.5px solid #e8e6e1;border-radius:9px" oninput="document.getElementById('set-accent').value=this.value"><input class="fi" id="set-accent" value="${s.programColor}" oninput="document.getElementById('set-accent-pick').value=this.value"></div>
+        </div>
+        <div class="fg"><label class="fl">Navigation color — sidebar background</label>
+          <div style="display:flex;gap:8px"><input type="color" id="set-navbg-pick" value="${s.navColor}" style="width:44px;height:38px;border:1.5px solid #e8e6e1;border-radius:9px" oninput="document.getElementById('set-navbg').value=this.value"><input class="fi" id="set-navbg" value="${s.navColor}" oninput="document.getElementById('set-navbg-pick').value=this.value"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#8f8d86;margin:-4px 0 12px">Text in the sidebar automatically switches between light and dark to stay readable against whatever you pick.</div>
+      <button class="btn btn-blk btn-sm" onclick="saveBranding()">Save Branding</button>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-hd">${ic('users',13)} Team Members</div>
+      <div style="font-size:12px;color:#8f8d86;margin-bottom:12px">A shared directory of who's on the team, for reference — this build has no login system, so adding someone here doesn't create real portal access.</div>
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+        <table class="dt"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
+        <tbody>${s.team.map((m,i)=>`<tr style="cursor:default"><td style="padding:6px 15px"><input class="fi" style="border:1px solid transparent;background:transparent;font-weight:600;padding:6px 8px" value="${m.name}" onchange="editTeamMember(${i},'name',this.value)" onfocus="this.style.borderColor='#e8e6e1';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"></td><td style="padding:6px 15px"><input class="fi" style="border:1px solid transparent;background:transparent;color:#8f8d86;padding:6px 8px" value="${m.email}" onchange="editTeamMember(${i},'email',this.value)" onfocus="this.style.borderColor='#e8e6e1';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"></td><td style="padding:6px 15px"><input class="fi" style="border:1px solid transparent;background:transparent;padding:6px 8px" value="${m.role}" onchange="editTeamMember(${i},'role',this.value)" onfocus="this.style.borderColor='#e8e6e1';this.style.background='#fff'" onblur="this.style.borderColor='transparent';this.style.background='transparent'"></td><td style="text-align:right;padding:6px 15px"><button onclick="removeTeamMember(${i})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:16px">×</button></td></tr>`).join('')}</tbody></table>
+      </div>
+      <div style="font-size:11px;color:#8f8d86;margin:-6px 0 12px">Click any field above to edit it directly.</div>
+      <div class="fr"><div class="fg"><label class="fl">Name</label><input class="fi" id="tm-name" placeholder="Full name"></div>
+      <div class="fg"><label class="fl">Email</label><input class="fi" id="tm-email" placeholder="name@company.com"></div>
+      <div class="fg"><label class="fl">Role</label><input class="fi" id="tm-role" placeholder="Designer / Selections"></div></div>
+      <button class="btn btn-blk btn-sm" onclick="addTeamMember()">${ic('plus',12)} Add Team Member</button>
+    </div>
+
+    <div class="alert alert-info"><span>${ic('info',15)}</span><div>Not in scope yet: real email sending, real file storage, and client login security are stubbed in this build. Everything else — task cadence, reorder links with affiliate tagging, warranty tracking, and the printable maintenance record — is fully functional.</div></div>`;
+}
+function saveSet(){
+  DB.companySettings.amazonTag=document.getElementById('set-tag').value.trim();
+  DB.companySettings.companyName=document.getElementById('set-name').value.trim();
+  DB.companySettings.tagline=document.getElementById('set-tag2').value.trim();
+  DB.companySettings.email=document.getElementById('set-email').value.trim();
+  DB.companySettings.phone=document.getElementById('set-phone').value.trim();
+  DB.companySettings.builderTrendUrl=document.getElementById('set-bt').value.trim();
+  rSET();rEM();rLogo();
+  alert('Settings saved.');
+}
+function handleLogoUpload(input){
+  const file=input.files&&input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{DB.companySettings.logoDataUrl=e.target.result;rSET();rLogo();};
+  reader.readAsDataURL(file);
+}
+function clearLogo(){DB.companySettings.logoDataUrl=null;rSET();rLogo();}
+function previewLogoSize(pct){DB.companySettings.logoSizePct=parseInt(pct);rLogo();}
+function isDarkColor(hex){
+  hex=(hex||'#ffffff').replace('#','');
+  if(hex.length===3)hex=hex.split('').map(c=>c+c).join('');
+  const r=parseInt(hex.substr(0,2),16)||255,g=parseInt(hex.substr(2,2),16)||255,b=parseInt(hex.substr(4,2),16)||255;
+  return (0.299*r+0.587*g+0.114*b)<140;
+}
+function applyBrandingVars(){
+  const s=DB.companySettings;
+  const root=document.documentElement.style;
+  root.setProperty('--accent',s.programColor||'#9c968a');
+  root.setProperty('--nav-bg',s.navColor||'#ffffff');
+  if(isDarkColor(s.navColor)){
+    root.setProperty('--nav-text','#ffffff');
+    root.setProperty('--nav-text-soft','rgba(255,255,255,.6)');
+    root.setProperty('--nav-active-bg','rgba(255,255,255,.12)');
+    root.setProperty('--nav-border','rgba(255,255,255,.14)');
+  }else{
+    root.setProperty('--nav-text','#1c1c1c');
+    root.setProperty('--nav-text-soft','#8f8d86');
+    root.setProperty('--nav-active-bg','#f0efec');
+    root.setProperty('--nav-border','#e8e6e1');
+  }
+}
+function saveBranding(){
+  DB.companySettings.programColor=document.getElementById('set-accent').value.trim()||'#9c968a';
+  DB.companySettings.navColor=document.getElementById('set-navbg').value.trim()||'#ffffff';
+  DB.companySettings.logoSizePct=parseInt(document.getElementById('set-logo-size').value)||100;
+  applyBrandingVars();rLogo();
+  alert('Branding saved.');
+}
+function addTeamMember(){
+  const n=document.getElementById('tm-name').value.trim(),e=document.getElementById('tm-email').value.trim(),r=document.getElementById('tm-role').value.trim();
+  if(!n||!e)return alert('Enter at least a name and email.');
+  DB.companySettings.team.push({name:n,email:e,role:r||'Team Member'});
+  rSET();
+}
+function editTeamMember(i,field,val){DB.companySettings.team[i][field]=val.trim();}
+function removeTeamMember(i){DB.companySettings.team.splice(i,1);rSET();}
+
+// ═══════════════════════════════════════════
+// CLIENT DETAIL (ADMIN)
+// ═══════════════════════════════════════════
+function rCDet(id){
+  const c=gC(id);if(!c)return;
+  const st=cSt(c),od=c.tasks.filter(t=>dU(t.nextDue)<0).length;
+  document.getElementById('cd-hero').innerHTML=`
+    <div class="hero"><div class="hero-c">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        ${ava(c,46)}<div style="flex:1">
+          <div style="font-size:19px;font-weight:800;color:#fff">${c.name}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:1px">${c.address}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.5)">${c.phone} · ${c.email}</div>
+        </div>${bdg(st.l,st.c,st.bg)}
+      </div>
+      <div style="display:flex;gap:8px">
+        ${[['Tasks',c.tasks.length],['Overdue',od],['Reorder Links',c.tasks.filter(t=>t.link).length+c.links.length],['Warranties',(c.warranties||[]).length],['Files',(c.homeFiles||[]).length]].map(([l,v])=>`<div style="background:rgba(255,255,255,.1);border-radius:9px;padding:8px 12px;flex:1;text-align:center"><div style="font-size:18px;font-weight:800;color:${l==='Overdue'&&v>0?'#e0a06a':'#fff'}">${v}</div><div style="font-size:9px;color:rgba(255,255,255,.55);margin-top:1px">${l}</div></div>`).join('')}
+      </div>
+    </div></div>`;
+  const TABS={tasks:'Maintenance',links:'Extra Reorder Links',paint:'Paint &amp; Stain',equipment:'Equipment',warranty:'Warranties',vendors:'Vendors',files:'Home Files',settings:'Settings'};
+  document.getElementById('cd-tabs').innerHTML=Object.entries(TABS).map(([k,v])=>`<div class="tab${k===dtab?' active':''}" id="cdt-${k}" onclick="sDT('${k}')">${v}</div>`).join('');
+  rCDB(id,dtab);
+}
+function sDT(t){dtab=t;document.querySelectorAll('[id^="cdt-"]').forEach(el=>el.classList.remove('active'));const el=document.getElementById('cdt-'+t);if(el)el.classList.add('active');rCDB(cid,t);}
+
+function rCDB(id,tab){
+  const c=gC(id),body=document.getElementById('cd-body');
+  if(tab==='tasks'){
+    body.innerHTML=`<div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:11px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.06em">Scheduled Maintenance</span>
+        <button class="btn btn-blk btn-sm" onclick="oAddTask()">${ic('plus',12)} Add Task</button>
+      </div>
+      ${c.tasks.map(t=>{const st=stOf(t),p=pct(t);return`
+        <div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid #edece9">
+          <div class="ib" style="background:${st.bg};width:38px;height:38px">${ic(t.icon,18)}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700">${t.name}</div>
+            <div class="prog"><div class="prog-f" style="width:${p}%;background:${pc(st.k)}"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px">
+              <span style="font-size:10px;color:#8f8d86">Every ${t.freqDays}d · Next: ${fD(t.nextDue)}</span>
+              <span style="font-size:10px;color:#8f8d86">${p}%</span>
+            </div>
+            ${t.link?`<div class="reorder-pill" style="margin-top:6px;display:inline-flex"><span>${ic('link',13)}</span><span>${t.link.name}</span><span style="opacity:.6">· ${t.link.store}</span></div>`:''}
+          </div>
+          ${bdg(st.l,st.c,st.bg)}
+          <button class="btn btn-sm" onclick="showHist(${id},${t.id})">${ic('clipboard',13)}</button>
+          <button class="btn btn-sm" onclick="oEditTask(${id},${t.id})">${ic('pencil',13)}</button>
+          <button onclick="delT(${id},${t.id})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px;padding:2px 6px">×</button>
+        </div>`}).join('')}
+    </div>`;
+  }
+  else if(tab==='links'){
+    body.innerHTML=`<div style="font-size:12px;color:#8f8d86;margin-bottom:10px">General reorder links not tied to a specific maintenance task (e.g. smoke-detector batteries, air-freshener refills).</div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:11px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.06em">Extra Reorder Links</span>
+        <button class="btn btn-blk btn-sm" onclick="oAddLink()">${ic('plus',12)} Add Link</button>
+      </div>
+      ${c.links.map(l=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #edece9"><div class="ib" style="background:#eeeeec;display:flex;align-items:center;justify-content:center">${ic('link',17)}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${l.name}</div>${l.note?`<div style="font-size:11px;color:#8f8d86">${l.note}</div>`:''}</div><a href="${affUrl(l.url,l.store)}" target="_blank" style="font-size:12px;color:#1c1c1c;font-weight:700;text-decoration:none">↗ ${l.store}</a><button onclick="delL(${id},${l.id})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px;padding:2px 6px">×</button></div>`).join('')}
+      ${c.links.length===0?'<div style="padding:18px;font-size:13px;color:#8f8d86;text-align:center">No extra links added yet.</div>':''}
+    </div>`;
+  }
+  else if(tab==='paint'){
+    body.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-blk btn-sm" onclick="oAddPaint()">${ic('plus',12)} Add Color</button></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      ${c.paints.map((p,i)=>`<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #edece9"><div style="width:46px;height:46px;border-radius:10px;background:${p.hex};border:1px solid #e8e6e1;flex-shrink:0"></div><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;font-weight:600">${p.area}</span>${bdg(p.type||'Paint',(p.type==='Stain'?'#6b5738':'#1c1c1c'),(p.type==='Stain'?'#f6f0e3':'#f0efec'))}</div><div style="font-size:12px;margin-top:1px">${p.name}</div><div style="font-size:11px;color:#8f8d86">${p.brand}${p.sheen?' · '+p.sheen:''}</div></div><div style="font-size:11px;font-family:monospace;color:#8f8d86;background:#f8f8f6;padding:4px 10px;border-radius:6px">${p.hex}</div><button onclick="delP(${id},${i})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px;padding:2px 6px">×</button></div>`).join('')}
+      ${c.paints.length===0?'<div style="padding:18px;font-size:13px;color:#8f8d86;text-align:center">No paint or stain colors added yet.</div>':''}
+    </div>`;
+  }
+  else if(tab==='equipment'){
+    const groups=groupEquip(c.equipment);
+    body.innerHTML=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-blk btn-sm" onclick="oAddEquip()">${ic('plus',12)} Add Equipment</button></div>
+    ${groups.map(g=>`
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+        <div style="padding:10px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;display:flex;align-items:center;gap:8px">${ic(eqIcon(g.cat),14)}<span style="font-size:11px;font-weight:700;color:#1c1c1c;text-transform:uppercase;letter-spacing:.05em">${g.cat}</span></div>
+        ${g.items.map(u=>`
+          <div style="padding:13px 20px;border-bottom:1px solid #edece9">
+            <div style="display:flex;align-items:center;gap:10px">
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13.5px;font-weight:700">${u.name}</div>
+                ${u.model?`<div style="font-size:12px;color:#8f8d86;margin-top:1px">Model: ${u.model}</div>`:''}
+              </div>
+              <button class="btn btn-sm" onclick="oAddSpec(${id},${u.id})">${ic('plus',11)} Detail</button>
+              <button onclick="delEquipUnit(${id},${u.id})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px;padding:2px 6px">×</button>
+            </div>
+            ${(u.specs||[]).length?`<div style="margin-top:9px;background:#f8f8f6;border-radius:9px;padding:2px 12px">${u.specs.map((s,si)=>`<div style="display:flex;align-items:center;padding:7px 0;${si<u.specs.length-1?'border-bottom:1px solid #edece9':''}"><div style="font-size:11px;color:#8f8d86;width:150px;flex-shrink:0">${s.label}</div><div style="flex:1;font-size:12.5px;font-weight:600">${s.value}</div><button onclick="delSpec(${id},${u.id},${si})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:15px;padding:0 4px">×</button></div>`).join('')}</div>`:''}
+          </div>`).join('')}
+      </div>`).join('')||'<div class="card" style="padding:18px;font-size:13px;color:#8f8d86;text-align:center">No equipment added yet.</div>'}
+    <div class="card" style="margin-top:16px"><div class="card-hd">${ic('note',13)} Home Notes</div>
+      <textarea style="width:100%;padding:10px 13px;border:1.5px solid #e8e6e1;border-radius:9px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical;min-height:70px" onchange="gC(${id}).notes=this.value">${c.notes||''}</textarea>
+    </div>`;
+  }
+  else if(tab==='warranty'){
+    const bt=DB.companySettings.builderTrendUrl;
+    body.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:12px">
+      ${bt?`<a href="${bt}" target="_blank" class="btn btn-sm" style="text-decoration:none">${ic('claim',12)} File a Warranty Claim (BuilderTrend)</a>`:`<span style="font-size:11px;color:#8f8d86">No BuilderTrend claim link set — add one in Company Settings.</span>`}
+      <button class="btn btn-blk btn-sm" onclick="oAddWarranty()">${ic('plus',12)} Add Warranty</button></div>
+    <div class="card" style="padding:0;overflow:hidden">
+      ${(c.warranties||[]).map((w,i)=>{const ws=wExp(w.expires);return`
+        <div style="padding:15px 20px;border-bottom:1px solid #edece9">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:${w.files&&w.files.length?'10px':'0'}">
+            <div style="width:42px;height:42px;border-radius:10px;background:#eeeeec;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic('shield',20)}</div>
+            <div style="flex:1"><div style="font-size:13px;font-weight:700">${w.item}</div><div style="font-size:12px">${w.brand} — ${w.coverage}</div><div style="font-size:11px;color:#8f8d86">Expires ${fD(w.expires)}</div></div>
+            ${bdg(ws.l,ws.c,ws.bg)}
+            <button class="btn btn-sm" onclick="oUploadWarranty(${id},${i})">${ic('upload',12)} Upload</button>
+            <button onclick="delW(${id},${i})" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px;padding:2px 6px">×</button>
+          </div>
+          ${w.files&&w.files.length?`<div style="padding:9px 12px;background:#f8f8f6;border-radius:9px">${w.files.map((f,fi)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0">${ic(fileIcon(f.name),15)}<span style="font-size:12px;flex:1">${f.name}</span><span style="font-size:10px;color:#8f8d86">${f.size}</span><button style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:14px" onclick="delWF(${id},${i},${fi})">×</button></div>`).join('')}</div>`:''}
+        </div>`;}).join('')}
+      ${(c.warranties||[]).length===0?'<div style="padding:18px;font-size:13px;color:#8f8d86;text-align:center">No warranties added yet.</div>':''}
+    </div>`;
+  }
+  else if(tab==='vendors'){
+    if(!c.vendorIds)c.vendorIds=[];
+    const groups={};
+    DB.vendors.forEach(v=>{(groups[v.trade]=groups[v.trade]||[]).push(v)});
+    body.innerHTML=`
+      <div class="alert alert-info" style="margin-bottom:14px">${ic('info',15)}<div>Pick which vendors from your directory show up in ${c.name.split(',')[1]?.trim()||c.name}'s portal — usually just whoever actually worked on this home, not every vendor you use.</div></div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="btn btn-sm" onclick="gP('vendors')">${ic('wrench',12)} Manage Vendor Directory</button></div>
+      ${DB.vendorTrades.filter(t=>groups[t]&&groups[t].length).map(t=>`
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+          <div style="padding:10px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;display:flex;align-items:center;gap:8px">${ic(tic(t),14)}<span style="font-size:11px;font-weight:700;color:#1c1c1c;text-transform:uppercase;letter-spacing:.05em">${t}</span></div>
+          ${groups[t].map(v=>`<label style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid #edece9;cursor:pointer">
+            <input type="checkbox" ${c.vendorIds.includes(v.id)?'checked':''} onchange="toggleClientVendor(${id},${v.id})" style="width:16px;height:16px;accent-color:#1c1c1c;cursor:pointer">
+            <div style="flex:1"><div style="font-size:13px;font-weight:600">${v.name}</div><div style="font-size:11px;color:#8f8d86">${v.phone}${v.note?' · '+v.note:''}</div></div>
+          </label>`).join('')}
+        </div>`).join('')||'<div class="card" style="padding:18px;font-size:13px;color:#8f8d86;text-align:center">No vendors in your directory yet — add some from Vendor Directory.</div>'}
+    `;
+  }
+  else if(tab==='files'){ body.innerHTML=rFilesTab(id,'admin'); }
+  else if(tab==='settings'){
+    body.innerHTML=`<div class="g2">
+      <div class="card"><div class="card-hd">${ic('settings',13)} Client Info</div>
+        <div class="fg"><label class="fl">Full name</label><input class="fi" value="${c.name}" onchange="gC(${id}).name=this.value;rSB()"></div>
+        <div class="fr"><div class="fg"><label class="fl">Phone</label><input class="fi" value="${c.phone}" onchange="gC(${id}).phone=this.value"></div><div class="fg"><label class="fl">Email</label><input class="fi" value="${c.email}" onchange="gC(${id}).email=this.value"></div></div>
+        <div class="fg"><label class="fl">Address</label><input class="fi" value="${c.address}" onchange="gC(${id}).address=this.value"></div>
+        <div class="fg"><label class="fl">Email reminder window</label>
+          <select class="fi" onchange="gC(${id}).emailRemindDays=parseInt(this.value)">${[1,3,5,7,14].map(n=>`<option value="${n}"${c.emailRemindDays===n?' selected':''}>${n} days before</option>`).join('')}</select>
+        </div>
+      </div>
+      <div class="card"><div class="card-hd">${ic('link',13)} Client Portal Link</div>
+        <div style="font-size:12px;color:#8f8d86;margin-bottom:8px">Share this unique link — no login needed. Works on any device.</div>
+        <div class="fg"><label class="fl">Portal code</label><input class="fi" value="${c.portalCode}" onchange="gC(${id}).portalCode=this.value;document.getElementById('plnk').textContent='mitchell-homecare.com/portal/'+this.value"></div>
+        <div class="link-copy"><span class="link-code" id="plnk">mitchell-homecare.com/portal/${c.portalCode}</span><button class="btn btn-sm" onclick="navigator.clipboard.writeText('https://mitchell-homecare.com/portal/${c.portalCode}').then(()=>this.textContent='Copied!').catch(()=>alert('Copy failed'))">Copy</button></div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="printRecord(${id})">${ic('printer',12)} Print Full Maintenance Record</button>
+          <button class="btn btn-sm" onclick="printQRLabel(${id})">${ic('qr',12)} Print QR Label (4×6)</button>
+        </div>
+      </div>
+    </div>`;
+  }
+}
+
+// ═══════════════════════════════════════════
+// FILES TAB (shared by admin + portal)
+// ═══════════════════════════════════════════
+function rFilesTab(id, mode){
+  const c=gC(id);
+  const cats=['All','Inspection','Plans','Photos','Permits','Documents','Other'];
+  const files=c.homeFiles||[];
+  return`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${cats.map(cat=>`<button onclick="filterFiles(${id},'${cat}','${mode}')" style="padding:5px 13px;border-radius:20px;font-size:11px;font-weight:700;border:1.5px solid #e8e6e1;background:#fff;cursor:pointer;color:#8f8d86;font-family:'Inter',sans-serif">${cat}</button>`).join('')}
+      </div>
+      <button class="btn btn-blk btn-sm" onclick="oUploadFile(${id},'${mode}')">${ic('upload',12)} Upload File</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden" id="files-list-${mode}">${rFilesList(files,'all',id,mode)}</div>
+    <div style="margin-top:12px">
+      <div class="upload-zone" onclick="oUploadFile(${id},'${mode}')">
+        <div style="margin-bottom:8px">${ic('folder',28)}</div>
+        <div style="font-size:14px;font-weight:700;color:#1c1c1c">Drop files here or click to upload</div>
+        <div style="font-size:12px;color:#8f8d86;margin-top:4px">PDF, images, Word docs, spreadsheets — any file type</div>
+      </div>
+    </div>`;
+}
+function rFilesList(files,cat,id,mode){
+  const filtered=cat==='all'||cat==='All'?files:files.filter(f=>f.category===cat);
+  if(filtered.length===0)return'<div style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No files in this category yet.</div>';
+  return filtered.map((f)=>`
+    <div class="file-item">
+      <div class="file-icon" style="background:#eeeeec">${ic(fileIcon(f.name),18)}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:600">${f.name}</div><div style="font-size:11px;color:#8f8d86">${f.category} · ${f.size} · Uploaded ${f.uploaded} by ${f.uploadedBy}</div></div>
+      <span style="font-size:10px;font-weight:700;background:#eeeeec;color:#1c1c1c;padding:2px 10px;border-radius:20px">${f.category}</span>
+      <button class="btn btn-sm" onclick="alert('File download requires backend connection.')">${ic('download',12)} Download</button>
+      ${mode==='admin'?`<button onclick="delFile(${id},${files.indexOf(f)},'${mode}')" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px;padding:2px 6px">×</button>`:''}
+    </div>`).join('');
+}
+function filterFiles(id,cat,mode){document.getElementById('files-list-'+mode).innerHTML=rFilesList(gC(id).homeFiles||[],cat,id,mode);}
+function oUploadFile(id,mode){
+  oM(`<div class="modal-title">${ic('upload',15)} Upload File</div>
+    <div class="fg"><label class="fl">File name *</label><input class="fi" id="uf-n" placeholder="Inspection_Report.pdf"></div>
+    <div class="fr"><div class="fg"><label class="fl">Category</label><select class="fi" id="uf-c"><option>Inspection</option><option>Plans</option><option>Photos</option><option>Permits</option><option>Documents</option><option>Other</option></select></div>
+    <div class="fg"><label class="fl">File size</label><input class="fi" id="uf-s" placeholder="2.4 MB"></div></div>
+    <div class="upload-zone" style="margin-bottom:12px" onclick="this.querySelector('input').click()">
+      <input type="file" onchange="document.getElementById('uf-n').value=this.files[0]?.name||'';document.getElementById('uf-s').value=(this.files[0]?(this.files[0].size/1048576).toFixed(1)+' MB':'')">
+      <div style="margin-bottom:6px">${ic('folder',24)}</div>
+      <div style="font-size:13px;font-weight:700;color:#1c1c1c">Click to select a file</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savFile(${id},'${mode}')">Save File Record</button></div>`);
+}
+function savFile(id,mode){
+  const n=document.getElementById('uf-n').value.trim();if(!n)return alert('Enter a file name.');
+  const c=gC(id);if(!c.homeFiles)c.homeFiles=[];
+  c.homeFiles.push({id:Date.now(),name:n,size:document.getElementById('uf-s').value||'—',category:document.getElementById('uf-c').value,uploaded:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),uploadedBy:mode==='admin'?'MC&D':'Client'});
+  cM();
+  if(mode==='admin'){rCDB(id,'files');}else{rPB(id,'files');}
+}
+function delFile(id,i,mode){const c=gC(id);c.homeFiles.splice(i,1);if(mode==='admin')rCDB(id,'files');else rPB(id,'files');}
+
+function oUploadWarranty(id,wIdx){
+  oM(`<div class="modal-title">${ic('upload',15)} Upload Warranty Document</div>
+    <div class="fg"><label class="fl">File name *</label><input class="fi" id="wf-n" placeholder="Carrier_Warranty_2024.pdf"></div>
+    <div class="fg"><label class="fl">File size</label><input class="fi" id="wf-s" placeholder="1.2 MB"></div>
+    <div class="upload-zone" style="margin-bottom:12px" onclick="this.querySelector('input').click()">
+      <input type="file" onchange="document.getElementById('wf-n').value=this.files[0]?.name||'';document.getElementById('wf-s').value=(this.files[0]?(this.files[0].size/1048576).toFixed(1)+' MB':'')">
+      <div style="margin-bottom:6px">${ic('shield',24)}</div>
+      <div style="font-size:13px;font-weight:700;color:#1c1c1c">Click to select warranty document</div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savWF(${id},${wIdx})">Save</button></div>`);
+}
+function savWF(id,wIdx){
+  const n=document.getElementById('wf-n').value.trim();if(!n)return alert('Enter a file name.');
+  const c=gC(id);if(!c.warranties[wIdx].files)c.warranties[wIdx].files=[];
+  c.warranties[wIdx].files.push({name:n,size:document.getElementById('wf-s').value||'—',uploaded:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})});
+  cM();rCDB(id,'warranty');
+}
+function delWF(id,wIdx,fIdx){const c=gC(id);c.warranties[wIdx].files.splice(fIdx,1);rCDB(id,'warranty');}
+function delW(id,i){const c=gC(id);c.warranties.splice(i,1);rCDB(id,'warranty');}
+
+// ═══════════════════════════════════════════
+// TASK COMPLETION
+// ═══════════════════════════════════════════
+function markDone(cid2,tid,isPortal){
+  const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);if(!t)return;
+  cM();
+  if(isPortal&&c._live){
+    markTaskDoneRemote(c.portalCode,tid).then(result=>{
+      if(result&&result.success){
+        if(!t.history)t.history=[];
+        t.history.unshift(now());
+        t.nextDue=result.next_due;
+      }else{
+        // Remote write failed — fall back to a local-only update so the UI
+        // doesn't silently do nothing, but this won't persist on reload.
+        if(!t.history)t.history=[];
+        t.history.unshift(now());
+        t.nextDue=dFN(t.freqDays);
+      }
+      rPB(cid2,'tasks');document.getElementById('pt-hero')&&rPortal(cid2);
+    });
+    return;
+  }
+  const completedDate=now();
+  if(!t.history)t.history=[];
+  t.history.unshift(completedDate);
+  t.nextDue=dFN(t.freqDays);
+  if(isPortal){rPB(cid2,'tasks');document.getElementById('pt-hero')&&rPortal(cid2);}
+  else{rCDB(cid2,'tasks');rDB();}
+}
+function showHist(cid2,tid){
+  const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
+  oM(`<div class="modal-title">${ic('clipboard',15)} Completion History — ${t.name}</div>
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;color:#8f8d86;margin-bottom:10px">Next due: <strong>${fD(t.nextDue)}</strong> · Every ${t.freqDays} days</div>
+      ${t.history&&t.history.length?t.history.map((d,i)=>`<div class="hist-row"><div style="width:26px;height:26px;border-radius:50%;background:#eef1e8;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic('check',13)}</div><span style="font-size:13px;flex:1">${d}</span>${i===0?'<span style="font-size:10px;color:#4c6b3f;font-weight:700;background:#eef1e8;padding:2px 8px;border-radius:10px">Most recent</span>':''}</div>`).join(''):'<div style="font-size:13px;color:#8f8d86;padding:10px 0">No completions logged yet.</div>'}
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="cM()">Close</button>
+      <button class="btn btn-lime btn-sm" onclick="markDone(${cid2},${tid},false)">${ic('check',12)} Mark Done Now</button>
+    </div>`);
+}
+
+// ═══════════════════════════════════════════
+// CLIENT PORTAL VIEW
+// ═══════════════════════════════════════════
+const PT_TITLES={home:'',tasks:'My Maintenance',reorder:'Reorder Supplies',paint:'Paint & Stain',equip:'Equipment',warranty:'Warranties',files:'Home Files',vendors:'Find a Vendor',notes:'Home Notes'};
+function rPtHero(id,tab){
+  const c=gC(id);if(!c)return;
+  const title=PT_TITLES[tab]||'';
+  document.getElementById('pt-hero').innerHTML=`
+    <div style="background:#1c1c1c;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:relative;overflow:hidden">
+      <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none"></div>
+      <div style="display:flex;align-items:center;gap:11px;position:relative;z-index:1">
+        <div style="width:27px;height:27px;border:1.5px solid rgba(255,255,255,.32);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">M</div>
+        ${title?`<div style="font-size:15px;font-weight:800;color:#fff">${title}</div>`:`<div style="font-size:10.5px;font-weight:700;color:#9c968a;text-transform:uppercase;letter-spacing:.1em">Home Care Portal</div>`}
+      </div>
+      <button class="btn btn-sm no-print" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2);font-size:11px;${clientOnlyMode?'display:none':''}" onclick="setView('admin')">${ic('arrowleft',11)} Admin</button>
+    </div>`;
+}
+function rPortal(id){
+  const c=gC(id);if(!c)return;
+  rPtHero(id,ptab);
+  rPB(id,ptab);
+}
+function sPT(t){
+  ptab=t;
+  ['home','tasks','reorder','paint','equip','warranty','files','vendors','notes'].forEach(id=>{const n=document.getElementById('cnav-'+id);if(n)n.classList.toggle('active',id===t);});
+  if(view==='client'){rPtHero(cid,t);rPB(cid,t);}
+}
+function rPB(id,tab){
+  const c=gC(id),body=document.getElementById('pt-body');
+  if(tab==='home'){
+    const fn=c.name.split(',')[1]?.trim()||c.name;
+    const sorted=[...c.tasks].sort((a,b)=>new Date(a.nextDue)-new Date(b.nextDue));
+    const urgent=sorted.filter(t=>{const d=dU(t.nextDue);return d>=0&&d<=7;});
+    const upcoming=sorted.filter(t=>{const d=dU(t.nextDue);return d>7&&d<=30;});
+    const good=sorted.filter(t=>dU(t.nextDue)>30);
+    const overdue=sorted.filter(t=>dU(t.nextDue)<0);
+    body.innerHTML=`
+    <div style="background:#f8f8f6;min-height:100%;padding:0">
+      <div style="background:#1c1c1c;padding:38px 32px 32px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-60px;right:-60px;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none"></div>
+        <div style="position:relative;z-index:1">
+          <div style="font-size:10px;color:#9c968a;font-weight:700;text-transform:uppercase;letter-spacing:.12em;margin-bottom:8px">${DB.companySettings.companyName}</div>
+          <div style="font-size:28px;font-weight:800;color:#fff;line-height:1.2;margin-bottom:4px">Welcome home, ${fn}.</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.55);margin-bottom:24px">${c.address}</div>
+          <div style="display:flex;gap:10px">
+            ${[
+              [overdue.length>0?overdue.length:urgent.length, overdue.length>0?'Overdue':'Due this week', overdue.length>0?'#e0a06a':'#c7d6ba', overdue.length>0?'rgba(224,160,106,.12)':'rgba(199,214,186,.15)'],
+              [upcoming.length,'Due this month','rgba(255,255,255,.75)','rgba(255,255,255,.08)'],
+              [good.length,'On schedule','rgba(255,255,255,.75)','rgba(255,255,255,.08)'],
+              [(c.homeFiles||[]).length,'Files stored','rgba(255,255,255,.75)','rgba(255,255,255,.08)'],
+            ].map(([val,lbl,col,bg])=>`
+              <div style="background:${bg};border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 18px;flex:1;text-align:center">
+                <div style="font-size:26px;font-weight:800;color:${col};line-height:1">${val}</div>
+                <div style="font-size:10px;color:rgba(255,255,255,.5);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">${lbl}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:26px 28px;display:flex;flex-direction:column;gap:24px">
+        ${overdue.length>0?`
+        <div style="background:#fff;border:1.5px solid #f0cccc;border-radius:16px;overflow:hidden">
+          <div style="background:#9a3b3b;padding:10px 20px;display:flex;align-items:center;gap:8px">
+            <span style="font-size:16px">${ic('warn',16)}</span><span style="font-size:12px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.06em">${overdue.length} Overdue Item${overdue.length>1?'s':''}</span>
+          </div>
+          ${overdue.map(t=>taskRow(id,t,true)).join('')}
+        </div>`:''}
+
+        ${urgent.length>0?section('Due This Week','#ad8a3f',urgent.map(t=>taskCard(id,t)).join('')):''}
+        ${upcoming.length>0?section('Coming Up This Month','#1c1c1c',`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${upcoming.map(t=>upcomingCard(t)).join('')}</div>`):''}
+
+        ${section('Quick Access','#9c968a',`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+          ${[['link','Reorder Supplies','reorder','Filters, salt & more'],['palette','Paint &amp; Stain','paint','Your saved color palette'],['shield','Warranties','warranty','Coverage & expiry dates'],['folder','Home Files','files','Permits, plans & photos']].map(([icon,label,tab,sub])=>`
+            <div onclick="sPT('${tab}')" style="background:#fff;border:1px solid #e8e6e1;border-radius:14px;padding:18px 14px;text-align:center;cursor:pointer">
+              <div style="margin-bottom:8px;color:#1c1c1c">${ic(icon,26)}</div><div style="font-size:12px;font-weight:700;color:#1c1c1c">${label}</div><div style="font-size:10px;color:#8f8d86;margin-top:3px">${sub}</div>
+            </div>`).join('')}</div>`)}
+
+        <div style="background:#fff;border:1px solid #e8e6e1;border-radius:16px;overflow:hidden">
+          <div style="background:#1c1c1c;padding:12px 20px"><div style="font-size:10px;font-weight:700;color:#9c968a;text-transform:uppercase;letter-spacing:.1em">Your Home at a Glance</div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+            ${c.paints.slice(0,4).map((p,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:${i<2?'1px solid #edece9':'none'};${i%2===0?'border-right:1px solid #edece9':''}"><div style="width:32px;height:32px;border-radius:7px;background:${p.hex};border:1px solid #e8e6e1;flex-shrink:0"></div><div><div style="font-size:11px;font-weight:600">${p.area}</div><div style="font-size:10px;color:#8f8d86">${p.name}</div></div></div>`).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:24px 28px;border-top:1px solid #e8e6e1;background:#fff;margin-top:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div><div style="font-size:12px;font-weight:800;color:#1c1c1c">${DB.companySettings.companyName}</div><div style="font-size:11px;color:#8f8d86;margin-top:2px">"${DB.companySettings.tagline}"</div></div>
+          <div style="text-align:right"><div style="font-size:11px;color:#8f8d86">Questions or concerns?</div><div style="font-size:12px;font-weight:700;color:#1c1c1c;margin-top:2px">${DB.companySettings.phone} · ${DB.companySettings.email}</div></div>
+        </div>
+      </div>
+    </div>`;
+  }
+  else if(tab==='tasks'){
+    const sorted=[...c.tasks].sort((a,b)=>new Date(a.nextDue)-new Date(b.nextDue));
+    body.innerHTML=`<div style="padding:18px">
+      <div style="font-size:12px;color:#8f8d86;margin-bottom:14px">You'll receive an email reminder ${c.emailRemindDays} days before each item is due. Click <strong>Mark Done</strong> when you complete it — the countdown resets automatically, and we log the date for your records.</div>
+      <div class="card" style="padding:0;overflow:hidden">${sorted.map(t=>taskRow(id,t,false)).join('')}</div>
+    </div>`;
+  }
+  else if(tab==='reorder'){
+    const withLinks=c.tasks.filter(t=>t.link);
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Quick links to reorder exactly what your home needs — no guessing on brand or size.</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${withLinks.map(t=>`<div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edece9"><div class="ib" style="background:#eeeeec;width:38px;height:38px">${ic(t.icon,19)}</div><div style="flex:1"><div style="font-size:14px;font-weight:700">${t.link.name}</div><div style="font-size:11px;color:#8f8d86">For: ${t.name} · every ${t.freqDays} days</div></div><button class="btn btn-blk btn-sm" onclick="window.open('${affUrl(t.link.url,t.link.store)}','_blank')">Order on ${t.link.store} ↗</button></div>`).join('')}
+        ${c.links.map(l=>`<div style="display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid #edece9"><div class="ib" style="background:#eeeeec;width:38px;height:38px">${ic('link',19)}</div><div style="flex:1"><div style="font-size:14px;font-weight:700">${l.name}</div>${l.note?`<div style="font-size:11px;color:#8f8d86">${l.note}</div>`:''}</div><button class="btn btn-blk btn-sm" onclick="window.open('${affUrl(l.url,l.store)}','_blank')">Order on ${l.store} ↗</button></div>`).join('')}
+        ${withLinks.length===0&&c.links.length===0?'<div style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No reorder links set up yet.</div>':''}
+      </div></div>`;
+  }
+  else if(tab==='paint'){
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Paint and stain colors used in your home for future touch-ups and projects.</div>
+      <div class="card" style="padding:0;overflow:hidden">
+        ${c.paints.map(p=>`<div style="display:flex;align-items:center;gap:16px;padding:15px 18px;border-bottom:1px solid #edece9"><div style="width:52px;height:52px;border-radius:11px;background:${p.hex};border:1px solid #e8e6e1;flex-shrink:0"></div><div style="flex:1"><div style="display:flex;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700">${p.area}</span>${bdg(p.type||'Paint',(p.type==='Stain'?'#6b5738':'#1c1c1c'),(p.type==='Stain'?'#f6f0e3':'#f0efec'))}</div><div style="font-size:13px;margin-top:2px">${p.name}</div><div style="font-size:11px;color:#8f8d86">${p.brand}${p.sheen?' · '+p.sheen:''}</div></div><div style="font-size:11px;font-family:monospace;color:#8f8d86;background:#f8f8f6;padding:4px 10px;border-radius:6px">${p.hex}</div></div>`).join('')}
+        ${c.paints.length===0?'<div style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No paint or stain colors added yet.</div>':''}
+      </div></div>`;
+  }
+  else if(tab==='equip'){
+    const groups=groupEquip(c.equipment);
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Key equipment and specifications for your home.</div>
+      ${groups.map(g=>`
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">
+          <div style="padding:10px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;display:flex;align-items:center;gap:8px">${ic(eqIcon(g.cat),14)}<span style="font-size:11px;font-weight:700;color:#1c1c1c;text-transform:uppercase;letter-spacing:.05em">${g.cat}</span></div>
+          ${g.items.map(u=>`
+            <div style="padding:14px 18px;border-bottom:1px solid #edece9">
+              <div style="font-size:14px;font-weight:700">${u.name}</div>
+              ${u.model?`<div style="font-size:12px;color:#8f8d86;margin-top:1px">Model: ${u.model}</div>`:''}
+              ${(u.specs||[]).length?`<div style="margin-top:8px;background:#f8f8f6;border-radius:9px;padding:2px 12px">${u.specs.map((s,si)=>`<div style="display:flex;padding:7px 0;${si<u.specs.length-1?'border-bottom:1px solid #edece9':''}"><div style="font-size:11px;color:#8f8d86;width:150px;flex-shrink:0">${s.label}</div><div style="flex:1;font-size:12.5px;font-weight:600">${s.value}</div></div>`).join('')}</div>`:''}
+            </div>`).join('')}
+        </div>`).join('')||'<div class="card" style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No equipment added yet.</div>'}
+      </div>`;
+  }
+  else if(tab==='warranty'){
+    const bt=DB.companySettings.builderTrendUrl;
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Warranty records for your home's systems and appliances.</div>
+      ${bt?`<a href="${bt}" target="_blank" style="text-decoration:none;display:block">
+        <div style="background:#1c1c1c;border-radius:14px;padding:18px 20px;margin-bottom:22px;display:flex;align-items:center;gap:16px;cursor:pointer;box-shadow:0 6px 18px rgba(20,20,18,.16);position:relative;overflow:hidden">
+          <div style="position:absolute;top:-24px;right:-24px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none"></div>
+          <div style="width:44px;height:44px;border-radius:11px;background:rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;position:relative;z-index:1">${ic('claim',22)}</div>
+          <div style="flex:1;position:relative;z-index:1"><div style="font-size:15px;font-weight:800;color:#fff">File a Warranty Claim</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:2px">Submit an issue directly through our BuilderTrend claim form</div></div>
+          <div style="color:#fff;background:rgba(255,255,255,.12);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:1">${ic('extlink',15)}</div>
+        </div></a>`:''}
+      <div class="card" style="padding:0;overflow:hidden">
+        ${(c.warranties||[]).map(w=>{const ws=wExp(w.expires);return`
+          <div style="padding:14px 18px;border-bottom:1px solid #edece9">
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:${w.files&&w.files.length?'8px':'0'}">
+              <div style="width:42px;height:42px;border-radius:10px;background:#eeeeec;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic('shield',20)}</div>
+              <div style="flex:1"><div style="font-size:14px;font-weight:700">${w.item}</div><div style="font-size:12px">${w.brand} — ${w.coverage}</div><div style="font-size:11px;color:#8f8d86">Expires ${fD(w.expires)}</div></div>
+              <div style="text-align:right">${bdg(ws.l,ws.c,ws.bg)}</div>
+            </div>
+            ${w.files&&w.files.length?`<div style="padding:6px 10px;background:#f8f8f6;border-radius:9px">${w.files.map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0">${ic(fileIcon(f.name),15)}<span style="font-size:12px;flex:1">${f.name}</span><span style="font-size:10px;color:#8f8d86">${f.size}</span><button class="btn btn-sm" style="font-size:10px" onclick="alert('File download requires backend connection.')">${ic('download',13)}</button></div>`).join('')}</div>`:''}
+          </div>`;}).join('')}
+        ${(c.warranties||[]).length===0?'<div style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No warranty records added yet.</div>':''}
+      </div></div>`;
+  }
+  else if(tab==='files'){ body.innerHTML=`<div style="padding:18px">${rFilesTab(id,'client')}</div>`; }
+  else if(tab==='vendors'){
+    const myVendors=DB.vendors.filter(v=>(c.vendorIds||[]).includes(v.id));
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Trusted contractors who worked on your home, recommended by ${DB.companySettings.companyName}.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        ${myVendors.map(v=>`<div class="vendor-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:34px;height:34px;border-radius:8px;background:${tcol(v.trade)};display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic(tic(v.trade),18)}</div><div><div style="font-size:13px;font-weight:700">${v.name}</div><div style="font-size:10px;font-weight:700;color:#9c968a;text-transform:uppercase;letter-spacing:.05em">${v.trade}</div></div></div><div style="font-size:12px">${ic('phone',12)} ${v.phone}</div><div style="font-size:12px;color:#1c1c1c">${ic('mail',12)} ${v.email}</div>${v.note?`<div style="font-size:11px;color:#8f8d86">${v.note}</div>`:''}</div>`).join('')}
+      </div>
+      ${myVendors.length===0?'<div style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No vendors assigned to your home yet.</div>':''}
+      </div>`;
+  }
+  else if(tab==='notes'){
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#8f8d86;margin-bottom:12px">Important notes and access information for your home.</div>
+      <div class="card"><div style="font-size:14px;line-height:1.8;color:#1c1c1c;white-space:pre-line">${c.notes||'No notes added yet.'}</div></div></div>`;
+  }
+}
+
+function section(title,barColor,inner){
+  return`<div><div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><div style="width:3px;height:18px;background:${barColor};border-radius:2px"></div><div style="font-size:11px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.1em">${title}</div></div>${inner}</div>`;
+}
+function taskCard(id,t){
+  const st=stOf(t),p=pct(t);
+  return`<div style="background:#fff;border:1px solid #e8e6e1;border-radius:16px;padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:8px">
+    <div style="width:46px;height:46px;border-radius:12px;background:${st.bg};display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic(t.icon,22)}</div>
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700">${t.name}</div>
+      <div style="font-size:12px;color:#8f8d86;margin-top:1px">Due ${fD(t.nextDue)} · Every ${t.freqDays} days${t.link?` · <a href="${affUrl(t.link.url,t.link.store)}" target="_blank" style="color:#6b5738;font-weight:700;text-decoration:none">${ic('link',12)} Reorder</a>`:''}</div>
+      <div style="height:3px;background:#edece9;border-radius:2px;margin-top:8px;overflow:hidden"><div style="height:100%;width:${p}%;background:${st.k==='danger'?'#c25a53':'#ad8a3f'};border-radius:2px"></div></div>
+    </div>
+    ${bdg(st.l,st.c,st.bg)}
+    <button class="btn btn-done" onclick="confirmDone(${id},${t.id})">${ic('check',12)} Done</button>
+  </div>`;
+}
+function upcomingCard(t){
+  return`<div style="background:#fff;border:1px solid #e8e6e1;border-radius:14px;padding:16px;display:flex;gap:12px;align-items:flex-start">
+    <div style="width:40px;height:40px;border-radius:10px;background:#eeeeec;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic(t.icon,20)}</div>
+    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700;line-height:1.3">${t.name}</div><div style="font-size:11px;color:#8f8d86;margin-top:3px">Due ${fD(t.nextDue)}</div>${bdg(dU(t.nextDue)+'d','#1c1c1c','#eeeeec')}</div>
+  </div>`;
+}
+function taskRow(id,t,inAlert){
+  const st=stOf(t),p=pct(t);
+  if(inAlert){
+    return`<div style="display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid #fce8e8">
+      <div style="width:40px;height:40px;border-radius:10px;background:#f5e9e8;display:flex;align-items:center;justify-content:center;flex-shrink:0">${ic(t.icon,20)}</div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:700">${t.name}</div><div style="font-size:12px;color:#9a3b3b;margin-top:1px">Was due ${fD(t.nextDue)}${t.link?` · <a href="${affUrl(t.link.url,t.link.store)}" target="_blank" style="color:#9a3b3b;font-weight:700;text-decoration:underline">reorder now</a>`:''}</div></div>
+      <button class="btn btn-done" onclick="confirmDone(${id},${t.id})">${ic('check',12)} Mark Done</button>
+    </div>`;
+  }
+  return`<div id="done-${t.id}" style="padding:14px 18px;border-bottom:1px solid #edece9">
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="ib" style="background:${st.bg};width:40px;height:40px">${ic(t.icon,20)}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700">${t.name}</div>
+        <div style="font-size:11px;color:#8f8d86;margin-top:1px">Due ${fD(t.nextDue)} · Every ${t.freqDays} days</div>
+        <div class="prog" style="margin-top:5px"><div class="prog-f" style="width:${p}%;background:${pc(st.k)}"></div></div>
+        ${t.history&&t.history.length?`<div style="font-size:10px;color:#8f8d86;margin-top:3px">Last completed: ${t.history[0]}</div>`:''}
+        ${t.link?`<div class="reorder-pill" style="margin-top:6px"><span>${ic('link',13)}</span><span>${t.link.name}</span><a href="${affUrl(t.link.url,t.link.store)}" target="_blank" style="margin-left:auto;color:#1c1c1c;font-weight:700;text-decoration:none">Order ↗</a></div>`:''}
+      </div>
+      ${bdg(st.l,st.c,st.bg)}
+      <button class="btn btn-done" onclick="confirmDone(${id},${t.id})">${ic('check',12)} Mark Done</button>
+    </div>
+  </div>`;
+}
+
+function confirmDone(cid2,tid){
+  const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
+  oM(`<div class="modal-title">${ic('checkc',15)} Mark Task Complete</div>
+    <div style="text-align:center;padding:20px 0">
+      <div style="margin-bottom:12px;color:#1c1c1c">${ic(t.icon,44)}</div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:8px">${t.name}</div>
+      <div style="font-size:13px;color:#8f8d86;margin-bottom:20px">Marking this complete will log today's date and reset the reminder countdown for the next cycle in <strong>${t.freqDays} days</strong>.</div>
+      <div style="font-size:12px;color:#4c6b3f;background:#eef1e8;border-radius:9px;padding:10px 14px;margin-bottom:6px">Next reminder will be sent on: <strong>${fD(dFN(t.freqDays - c.emailRemindDays))}</strong></div>
+    </div>
+    <div class="modal-footer" style="justify-content:center;gap:12px">
+      <button class="btn btn-sm" onclick="cM()">Cancel</button>
+      <button class="btn btn-lime" style="padding:9px 24px;font-size:13px" onclick="markDone(${cid2},${tid},true)">${ic('check',13)} Yes, Mark Complete</button>
+    </div>`);
+}
+
+// ═══════════════════════════════════════════
+// PRINT / PDF MAINTENANCE RECORD
+// ═══════════════════════════════════════════
+function setPrintPageSize(css){
+  let tag=document.getElementById('print-page-style');
+  if(!tag){tag=document.createElement('style');tag.id='print-page-style';document.head.appendChild(tag);}
+  tag.textContent=css;
+}
+function printRecord(id){
+  setPrintPageSize('');
+  document.getElementById('print-area').classList.remove('qr-label-page');
+  const c=gC(id);
+  const rows=c.tasks.flatMap(t=>(t.history&&t.history.length?t.history:[]).map(d=>({date:d,name:t.name})));
+  rows.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const active=c.tasks.map(t=>`<tr><td>${t.name}</td><td>Every ${t.freqDays} days</td><td>${fD(t.nextDue)}</td><td>${t.history&&t.history[0]?t.history[0]:'—'}</td></tr>`).join('');
+  const completed=rows.length?rows.map(r=>`<tr><td>${r.date}</td><td>${r.name}</td></tr>`).join(''):'<tr><td colspan="2" style="color:#8f8d86">No completed maintenance logged yet.</td></tr>';
+  document.getElementById('print-area').innerHTML=`
+    <div style="max-width:800px;margin:40px auto;font-family:'Inter',sans-serif;color:#1c1c1c;padding:0 20px">
+      <div style="border-bottom:2px solid #1c1c1c;padding-bottom:16px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end">
+        <div><div style="font-size:20px;font-weight:800">${DB.companySettings.companyName}</div><div style="font-size:11px;color:#8f8d86;margin-top:2px">"${DB.companySettings.tagline}"</div></div>
+        <div style="text-align:right;font-size:11px;color:#8f8d86">${DB.companySettings.email}<br>${DB.companySettings.phone}</div>
+      </div>
+      <div style="font-size:16px;font-weight:800;margin-bottom:2px">Home Maintenance Record</div>
+      <div style="font-size:12px;color:#8f8d86;margin-bottom:22px">${c.name} · ${c.address} · Printed ${fD(new Date().toISOString().split('T')[0])}</div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#8f8d86;margin-bottom:8px">Active Maintenance Schedule</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:26px;font-size:12px">
+        <thead><tr style="border-bottom:1.5px solid #1c1c1c"><th style="text-align:left;padding:6px 8px">Item</th><th style="text-align:left;padding:6px 8px">Frequency</th><th style="text-align:left;padding:6px 8px">Next Due</th><th style="text-align:left;padding:6px 8px">Last Completed</th></tr></thead>
+        <tbody>${active}</tbody>
+      </table>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#8f8d86;margin-bottom:8px">Completed Maintenance History</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="border-bottom:1.5px solid #1c1c1c"><th style="text-align:left;padding:6px 8px">Date Completed</th><th style="text-align:left;padding:6px 8px">Item</th></tr></thead>
+        <tbody>${completed}</tbody>
+      </table>
+
+      <div style="margin-top:30px;font-size:10px;color:#8f8d86;border-top:1px solid #e8e6e1;padding-top:12px">This record reflects maintenance tracked through the ${DB.companySettings.companyName} Home Care Portal and may be presented for resale disclosure or warranty documentation purposes.</div>
+    </div>`;
+  window.print();
+}
+function printQRLabel(id){
+  const c=gC(id);
+  const url=`https://mitchell-homecare.com/portal/${c.portalCode}`;
+  const qr=qrcode(0,'M');
+  qr.addData(url);
+  qr.make();
+  const qrSvg=qr.createSvgTag({cellSize:6,margin:0});
+  setPrintPageSize('@page{size:4in 6in;margin:0}');
+  document.getElementById('print-area').classList.add('qr-label-page');
+  document.getElementById('print-area').innerHTML=`
+    <div style="width:4in;height:6in;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.4in;box-sizing:border-box;font-family:'Inter',sans-serif;text-align:center;background:#fff;margin:0 auto">
+      <div style="width:30px;height:30px;border:1.5px solid #1c1c1c;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#1c1c1c;margin-bottom:10px;flex-shrink:0">M</div>
+      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1c1c1c">${DB.companySettings.companyName}</div>
+      <div style="font-size:9px;color:#8f8d86;margin-top:2px;margin-bottom:20px">Home Care Portal</div>
+      <div style="border:1px solid #e8e6e1;border-radius:10px;padding:10px;background:#fff;width:2.7in;height:2.7in;display:flex;align-items:center;justify-content:center;flex-shrink:0">${qrSvg}</div>
+      <div style="font-size:11px;color:#8f8d86;margin-top:20px;line-height:1.5">Scan to view your home's maintenance<br>schedule, warranties &amp; more</div>
+    </div>`;
+  alert('Before printing: in the print dialog, set "Paper size" to 4 x 6 in (or Custom, 4in by 6in). If it stays on Letter or A4, the label will print small and off-center instead of filling the label.');
+  window.print();
+  setTimeout(()=>setPrintPageSize(''),1500);
+}
+
+// ═══════════════════════════════════════════
+// DATA MUTATIONS
+// ═══════════════════════════════════════════
+function delT(cid2,tid){const c=gC(cid2);c.tasks=c.tasks.filter(t=>t.id!==tid);rCDB(cid2,'tasks');rPortal(cid2);rDB();}
+function delL(cid2,lid){const c=gC(cid2);c.links=c.links.filter(l=>l.id!==lid);rCDB(cid2,'links');}
+function toggleClientVendor(cid2,vid){const c=gC(cid2);if(!c.vendorIds)c.vendorIds=[];const i=c.vendorIds.indexOf(vid);if(i>-1)c.vendorIds.splice(i,1);else c.vendorIds.push(vid);rCDB(cid2,'vendors');}
+function delP(cid2,i){const c=gC(cid2);c.paints.splice(i,1);rCDB(cid2,'paint');}
+
+// ═══════════════════════════════════════════
+// MODALS — ADD / EDIT TASK (with optional per-task reorder link)
+// ═══════════════════════════════════════════
+function oAddTask(){
+  oM(`<div class="modal-title">${ic('plus',15)} Add Maintenance Task</div>
+  <div class="fg"><label class="fl">Task name *</label><input class="fi" id="mt-n" placeholder="Whole-house filter change"></div>
+  <div class="fr"><div class="fg"><label class="fl">Icon</label>${iconPicker('mt-i','wrench')}</div>
+  <div class="fg"><label class="fl">Frequency</label>${freqPicker('mt-fn','mt-fu',90)}</div></div>
+  <div class="fg"><label class="fl">Next due date</label><input class="fi" type="date" id="mt-d" value="${dFN(90)}"></div>
+  <div class="adder">
+    <div style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Reorder link (optional) — the product they'll need to do this maintenance</div>
+    <div class="fg"><label class="fl">Product name</label><input class="fi" id="mt-ln" placeholder="Whole House Filter — 20×25×4 (2-pack)"></div>
+    <div class="fr"><div class="fg"><label class="fl">Product URL</label><input class="fi" id="mt-lu" placeholder="https://www.amazon.com/dp/..."></div>
+    <div class="fg"><label class="fl">Store</label><select class="fi" id="mt-ls"><option>Amazon</option><option>Home Depot</option><option>Lowe's</option><option>Other</option></select></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savT()">Save Task</button></div>`);
+}
+function savT(){
+  const n=document.getElementById('mt-n').value.trim();if(!n)return alert('Enter a task name.');
+  const ln=document.getElementById('mt-ln').value.trim(),lu=document.getElementById('mt-lu').value.trim();
+  const freqDays=freqToDays(document.getElementById('mt-fn').value,document.getElementById('mt-fu').value);
+  const c=gC(cid);
+  c.tasks.push({id:Date.now(),name:n,icon:document.getElementById('mt-i').value||'wrench',freqDays,nextDue:document.getElementById('mt-d').value,history:[],
+    link:(ln&&lu)?{name:ln,url:lu,store:document.getElementById('mt-ls').value}:null});
+  cM();rCDB(cid,'tasks');rPortal(cid);rDB();
+}
+function oEditTask(cid2,tid){
+  const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
+  oM(`<div class="modal-title">${ic('pencil',15)} Edit Maintenance Task</div>
+  <div class="fg"><label class="fl">Task name *</label><input class="fi" id="et-n" value="${t.name}"></div>
+  <div class="fr"><div class="fg"><label class="fl">Icon</label>${iconPicker('et-i',t.icon)}</div>
+  <div class="fg"><label class="fl">Frequency</label>${freqPicker('et-fn','et-fu',t.freqDays)}</div></div>
+  <div class="fg"><label class="fl">Next due date</label><input class="fi" type="date" id="et-d" value="${t.nextDue}"></div>
+  <div class="adder">
+    <div style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Reorder link (optional)</div>
+    <div class="fg"><label class="fl">Product name</label><input class="fi" id="et-ln" value="${t.link?t.link.name:''}"></div>
+    <div class="fr"><div class="fg"><label class="fl">Product URL</label><input class="fi" id="et-lu" value="${t.link?t.link.url:''}"></div>
+    <div class="fg"><label class="fl">Store</label><select class="fi" id="et-ls"><option${t.link&&t.link.store==='Amazon'?' selected':''}>Amazon</option><option${t.link&&t.link.store==='Home Depot'?' selected':''}>Home Depot</option><option${t.link&&t.link.store==="Lowe's"?' selected':''}>Lowe's</option><option${t.link&&t.link.store==='Other'?' selected':''}>Other</option></select></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savEditT(${cid2},${tid})">Save Changes</button></div>`);
+}
+function savEditT(cid2,tid){
+  const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
+  t.name=document.getElementById('et-n').value.trim()||t.name;
+  t.icon=document.getElementById('et-i').value||t.icon;
+  t.freqDays=freqToDays(document.getElementById('et-fn').value,document.getElementById('et-fu').value)||t.freqDays;
+  t.nextDue=document.getElementById('et-d').value||t.nextDue;
+  const ln=document.getElementById('et-ln').value.trim(),lu=document.getElementById('et-lu').value.trim();
+  t.link=(ln&&lu)?{name:ln,url:lu,store:document.getElementById('et-ls').value}:null;
+  cM();rCDB(cid2,'tasks');rPortal(cid2);
+}
+
+function oAddLink(){oM(`<div class="modal-title">${ic('link',15)} Add Reorder Link</div>
+  <div class="fg"><label class="fl">Product name *</label><input class="fi" id="ml-n" placeholder="9V Batteries (smoke detectors)"></div>
+  <div class="fg"><label class="fl">URL *</label><input class="fi" id="ml-u" placeholder="https://amazon.com/..."></div>
+  <div class="fr"><div class="fg"><label class="fl">Store</label><select class="fi" id="ml-s"><option>Amazon</option><option>Home Depot</option><option>Lowe's</option><option>Other</option></select></div><div class="fg"><label class="fl">Note</label><input class="fi" id="ml-no" placeholder="Optional"></div></div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savL()">Save Link</button></div>`);}
+function savL(){const n=document.getElementById('ml-n').value.trim(),u=document.getElementById('ml-u').value.trim();if(!n||!u)return alert('Fill in name and URL.');const c=gC(cid);c.links.push({id:Date.now(),name:n,url:u,store:document.getElementById('ml-s').value,note:document.getElementById('ml-no').value});cM();rCDB(cid,'links');}
+
+function oAddPaint(){oM(`<div class="modal-title">${ic('palette',15)} Add Paint or Stain Color</div>
+  <div class="fr"><div class="fg"><label class="fl">Area / Room *</label><input class="fi" id="pp-a" placeholder="Living room"></div><div class="fg"><label class="fl">Color name *</label><input class="fi" id="pp-n" placeholder="SW 7015 Repose Gray"></div></div>
+  <div class="fr"><div class="fg"><label class="fl">Type</label><select class="fi" id="pp-t" onchange="refreshSheenOptions('pp-t','pp-s')"><option>Paint</option><option>Stain</option></select></div>
+  <div class="fg"><label class="fl">Sheen / Finish</label><select class="fi" id="pp-s">${sheenOptions('Paint')}</select></div></div>
+  <div class="fr"><div class="fg"><label class="fl">Brand</label><input class="fi" id="pp-b" placeholder="Sherwin-Williams"></div>
+  <div class="fg"><label class="fl">Hex</label><div style="display:flex;gap:8px"><input type="color" id="pp-hp" value="#E8DDD0" style="width:44px;height:38px;border:1.5px solid #e8e6e1;border-radius:9px" oninput="document.getElementById('pp-h').value=this.value"><input class="fi" id="pp-h" value="#E8DDD0" oninput="document.getElementById('pp-hp').value=this.value"></div></div></div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savPnt()">Save Color</button></div>`);}
+function savPnt(){const a=document.getElementById('pp-a').value.trim(),n=document.getElementById('pp-n').value.trim();if(!a||!n)return alert('Fill in area and color name.');gC(cid).paints.push({area:a,name:n,brand:document.getElementById('pp-b').value,hex:document.getElementById('pp-h').value,type:document.getElementById('pp-t').value,sheen:document.getElementById('pp-s').value});cM();rCDB(cid,'paint');}
+
+function oAddEquip(){oM(`<div class="modal-title">${ic('wrench',15)} Add Equipment</div>
+  <div class="fr"><div class="fg"><label class="fl">Category *</label><select class="fi" id="eq-c">${EQUIP_CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+  <div class="fg"><label class="fl">Name *</label><input class="fi" id="eq-nm" placeholder="Water Softener, Garage Door Motor…"></div></div>
+  <div class="fg"><label class="fl">Model / Serial number</label><input class="fi" id="eq-mo" placeholder="Carrier 24ACC636A003"></div>
+  <div class="adder">
+    <div style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Additional detail (optional) — add more later from the equipment card</div>
+    <div class="fr"><div class="fg" style="margin-bottom:0"><label class="fl">Label</label><input class="fi" id="eq-l" placeholder="Filter size, Salt type…"></div>
+    <div class="fg" style="margin-bottom:0"><label class="fl">Value</label><input class="fi" id="eq-v" placeholder="20 × 25 × 4 in"></div></div>
+  </div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savEq()">Save Equipment</button></div>`);}
+function savEq(){
+  const nm=document.getElementById('eq-nm').value.trim();if(!nm)return alert('Enter a name for this equipment.');
+  const l=document.getElementById('eq-l').value.trim(),v=document.getElementById('eq-v').value.trim();
+  gC(cid).equipment.push({id:Date.now(),category:document.getElementById('eq-c').value,name:nm,model:document.getElementById('eq-mo').value.trim(),specs:(l&&v)?[{label:l,value:v}]:[]});
+  cM();rCDB(cid,'equipment');
+}
+function delEquipUnit(cid2,uid){const c=gC(cid2);c.equipment=c.equipment.filter(u=>u.id!==uid);rCDB(cid2,'equipment');}
+function oAddSpec(cid2,uid){
+  oM(`<div class="modal-title">${ic('plus',15)} Add Detail</div>
+  <div class="fg"><label class="fl">Label *</label><input class="fi" id="sp-l" placeholder="Filter size, Salt type, Serial number…"></div>
+  <div class="fg"><label class="fl">Value *</label><input class="fi" id="sp-v" placeholder="20 × 25 × 4 in"></div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savSpec(${cid2},${uid})">Save</button></div>`);
+}
+function savSpec(cid2,uid){
+  const l=document.getElementById('sp-l').value.trim(),v=document.getElementById('sp-v').value.trim();if(!l||!v)return alert('Fill in both fields.');
+  const c=gC(cid2),u=c.equipment.find(x=>x.id===uid);if(!u.specs)u.specs=[];u.specs.push({label:l,value:v});
+  cM();rCDB(cid2,'equipment');
+}
+function delSpec(cid2,uid,si){const c=gC(cid2),u=c.equipment.find(x=>x.id===uid);u.specs.splice(si,1);rCDB(cid2,'equipment');}
+
+function oAddWarranty(){oM(`<div class="modal-title">${ic('shield',15)} Add Warranty</div>
+  <div class="fr"><div class="fg"><label class="fl">Item / System *</label><input class="fi" id="wt-i" placeholder="HVAC System, Roof…"></div><div class="fg"><label class="fl">Brand</label><input class="fi" id="wt-b" placeholder="Carrier, GAF…"></div></div>
+  <div class="fg"><label class="fl">Coverage description</label><input class="fi" id="wt-c" placeholder="10-yr parts, 1-yr labor"></div>
+  <div class="fg"><label class="fl">Expiration date *</label><input class="fi" type="date" id="wt-d" value="${dFN(365*5)}"></div>
+  <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savWt()">Save Warranty</button></div>`);}
+function savWt(){const i=document.getElementById('wt-i').value.trim(),d=document.getElementById('wt-d').value;if(!i||!d)return alert('Fill in item and expiration date.');const c=gC(cid);if(!c.warranties)c.warranties=[];c.warranties.push({id:Date.now(),item:i,brand:document.getElementById('wt-b').value,coverage:document.getElementById('wt-c').value,expires:d,files:[]});cM();rCDB(cid,'warranty');}
+
+// ═══════════════════════════════════════════
+// ADD CLIENT WIZARD
+// ═══════════════════════════════════════════
+const ACS=['Basic Info','Maintenance Schedule','Reorder Links','Home Info','Warranties','Review'];
+function rAcWiz(){
+  document.getElementById('ac-steps').innerHTML=ACS.map((s,i)=>`<div class="step-dot" style="background:${acStep>i+1?'#4c6b3f':acStep===i+1?'#1c1c1c':'#e8e6e1'};color:${acStep>=i+1?'#fff':'#8f8d86'};font-size:10px">${acStep>i+1?ic('check',11):i+1}</div><span style="font-size:11px;font-weight:${acStep===i+1?700:500};color:${acStep===i+1?'#1c1c1c':'#8f8d86'};margin-right:6px">${s}</span>${i<ACS.length-1?'<div class="step-line"></div>':''}`).join('');
+  const body=document.getElementById('ac-body2');
+  if(acStep===1){body.innerHTML=`<div class="card"><div class="card-hd">${ic('users',13)} Basic Information</div>
+    <div class="fr"><div class="fg"><label class="fl">Client name *</label><input class="fi" id="a-nm" value="${acData.name||''}" placeholder="Last, First"></div><div class="fg"><label class="fl">Phone *</label><input class="fi" id="a-ph" value="${acData.phone||''}" placeholder="(417) 555-0000"></div></div>
+    <div class="fg"><label class="fl">Email *</label><input class="fi" id="a-em" value="${acData.email||''}" placeholder="client@email.com"></div>
+    <div class="fg"><label class="fl">Address *</label><input class="fi" id="a-ad" value="${acData.address||''}" placeholder="412 Oakwood Drive, Springfield MO"></div>
+    <div class="fr"><div class="fg"><label class="fl">Portal code</label><input class="fi" id="a-pc" value="${acData.portalCode||''}" placeholder="auto-generated"></div>
+    <div class="fg"><label class="fl">Email reminder window</label><select class="fi" id="a-er">${[1,3,5,7,14].map(n=>`<option value="${n}"${(acData.emailRemindDays||5)===n?' selected':''}>${n} days before</option>`).join('')}</select></div></div>
+    </div><div style="display:flex;justify-content:flex-end;margin-top:14px"><button class="btn btn-blk" onclick="acN1()">Next →</button></div>`;}
+  else if(acStep===2){body.innerHTML=`<div class="card"><div class="card-hd">${ic('clipboard',13)} Maintenance Schedule</div>
+    ${(acData.tasks||[]).map((t,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8f8f6;border-radius:9px;margin-bottom:6px"><span>${ic(t.icon,18)}</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${t.name}</div><div style="font-size:11px;color:#8f8d86">Every ${t.freqDays} days${t.link?' · linked: '+t.link.name:''}</div></div><button onclick="acData.tasks.splice(${i},1);rAcWiz()" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px">×</button></div>`).join('')}
+    <div class="adder"><div style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Add a task</div>
+      <div class="fr"><div class="fg" style="margin-bottom:0"><label class="fl">Name</label><input class="fi" id="nt-n" placeholder="Whole-house filter change"></div>
+        <div class="fg" style="margin-bottom:0"><label class="fl">Icon</label>${iconPicker('nt-i','wrench')}</div></div>
+      <div class="fg" style="margin-bottom:0"><label class="fl">Frequency</label>${freqPicker('nt-fn','nt-fu',90)}</div>
+      <div style="margin-top:10px" class="fr">
+        <div class="fg" style="margin-bottom:0"><label class="fl">Reorder product (optional)</label><input class="fi" id="nt-ln" placeholder="Product name"></div>
+        <div class="fg" style="margin-bottom:0"><label class="fl">Product URL</label><input class="fi" id="nt-lu" placeholder="https://..."></div>
+      </div>
+      <button class="btn btn-blk btn-sm" style="margin-top:10px" onclick="acAT()">${ic('plus',12)} Add Task</button>
+    </div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px"><button class="btn" onclick="acStep=1;rAcWiz()">← Back</button><button class="btn btn-blk" onclick="acStep=3;rAcWiz()">Next →</button></div>`;}
+  else if(acStep===3){body.innerHTML=`<div class="card"><div class="card-hd">${ic('link',13)} Extra Reorder Links</div>
+    ${(acData.links||[]).map((l,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f8f8f6;border-radius:9px;margin-bottom:6px"><span>${ic('link',14)}</span><div style="flex:1"><div style="font-size:13px;font-weight:700">${l.name}</div></div><button onclick="acData.links.splice(${i},1);rAcWiz()" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:18px">×</button></div>`).join('')}
+    <div class="adder">
+      <div class="fg"><label class="fl">Product name</label><input class="fi" id="nl-n" placeholder="9V Batteries (smoke detectors)"></div>
+      <div class="fg"><label class="fl">URL</label><input class="fi" id="nl-u" placeholder="https://amazon.com/..."></div>
+      <div class="fr"><div class="fg"><label class="fl">Store</label><select class="fi" id="nl-s"><option>Amazon</option><option>Home Depot</option><option>Lowe's</option><option>Other</option></select></div><div class="fg"><label class="fl">Note</label><input class="fi" id="nl-no" placeholder="Optional"></div></div>
+      <button class="btn btn-blk btn-sm" onclick="acAL()">${ic('plus',12)} Add Link</button>
+    </div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px"><button class="btn" onclick="acStep=2;rAcWiz()">← Back</button><button class="btn btn-blk" onclick="acStep=4;rAcWiz()">Next →</button></div>`;}
+  else if(acStep===4){body.innerHTML=`<div class="g2" style="margin-bottom:14px">
+    <div class="card"><div class="card-hd">${ic('palette',13)} Paint &amp; Stain Colors</div>
+      ${(acData.paints||[]).map((p,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #edece9"><div style="width:24px;height:24px;border-radius:5px;background:${p.hex};border:1px solid #e8e6e1;flex-shrink:0"></div><div style="flex:1;font-size:12px"><strong>${p.area}</strong> — ${p.name} <span style="color:#8f8d86">(${p.type||'Paint'}${p.sheen?', '+p.sheen:''})</span></div><button onclick="acData.paints.splice(${i},1);rAcWiz()" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:16px">×</button></div>`).join('')}
+      <div class="adder">
+        <div class="fr"><div class="fg"><label class="fl">Area</label><input class="fi" id="np-a" placeholder="Living room"></div><div class="fg"><label class="fl">Color name</label><input class="fi" id="np-n" placeholder="SW 7015 Repose Gray"></div></div>
+        <div class="fr"><div class="fg"><label class="fl">Type</label><select class="fi" id="np-t" onchange="refreshSheenOptions('np-t','np-s')"><option>Paint</option><option>Stain</option></select></div>
+        <div class="fg"><label class="fl">Sheen / Finish</label><select class="fi" id="np-s">${sheenOptions('Paint')}</select></div></div>
+        <div class="fr"><div class="fg"><label class="fl">Brand</label><input class="fi" id="np-b" placeholder="Sherwin-Williams"></div>
+        <div class="fg"><label class="fl">Hex</label><div style="display:flex;gap:6px"><input type="color" id="np-hp" value="#E8DDD0" style="width:40px;height:38px;border:1.5px solid #e8e6e1;border-radius:9px" oninput="document.getElementById('np-h').value=this.value"><input class="fi" id="np-h" value="#E8DDD0" oninput="document.getElementById('np-hp').value=this.value"></div></div></div>
+        <button class="btn btn-blk btn-sm" onclick="acAP()">${ic('plus',12)} Add Color</button>
+      </div>
+    </div>
+    <div class="card"><div class="card-hd">${ic('wrench',13)} Equipment</div>
+      ${(acData.equipment||[]).map((u,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #edece9;font-size:12px"><span style="color:#8f8d86">${u.category||'Other'} · ${u.name}</span><span style="font-weight:700">${u.model||'—'}</span><button onclick="acData.equipment.splice(${i},1);rAcWiz()" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:16px">×</button></div>`).join('')}
+      <div class="adder">
+        <div class="fr"><div class="fg"><label class="fl">Category</label><select class="fi" id="ne-c">${EQUIP_CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">Name</label><input class="fi" id="ne-nm" placeholder="Water Softener, HVAC System…"></div></div>
+        <div class="fg"><label class="fl">Model / Serial</label><input class="fi" id="ne-mo" placeholder="Carrier 24ACC636A003"></div>
+        <button class="btn btn-blk btn-sm" onclick="acAE()">${ic('plus',12)} Add Equipment</button>
+      </div>
+    </div></div>
+    <div class="card"><div class="card-hd">${ic('note',13)} Home Notes</div><textarea class="fi" id="a-notes" rows="3" placeholder="Access codes, gate info, special instructions…" style="resize:vertical">${acData.notes||''}</textarea></div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px"><button class="btn" onclick="acStep=3;rAcWiz()">← Back</button><button class="btn btn-blk" onclick="acData.notes=document.getElementById('a-notes').value;acStep=5;rAcWiz()">Next →</button></div>`;}
+  else if(acStep===5){body.innerHTML=`<div class="card"><div class="card-hd">${ic('shield',13)} Warranties</div>
+    ${(acData.warranties||[]).map((w,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #edece9"><div style="flex:1;font-size:12px"><strong>${w.item}</strong> (${w.brand}) — expires ${fD(w.expires)}</div><button onclick="acData.warranties.splice(${i},1);rAcWiz()" style="background:none;border:none;cursor:pointer;color:#9c968a;font-size:16px">×</button></div>`).join('')}
+    <div class="adder">
+      <div class="fr"><div class="fg"><label class="fl">Item *</label><input class="fi" id="aw-i" placeholder="HVAC System, Roof…"></div><div class="fg"><label class="fl">Brand</label><input class="fi" id="aw-b" placeholder="Carrier, GAF…"></div></div>
+      <div class="fr"><div class="fg"><label class="fl">Coverage</label><input class="fi" id="aw-c" placeholder="10-yr parts, 1-yr labor"></div><div class="fg"><label class="fl">Expires</label><input class="fi" type="date" id="aw-d" value="${dFN(365*5)}"></div></div>
+      <button class="btn btn-blk btn-sm" onclick="acAW()">${ic('plus',12)} Add Warranty</button>
+    </div></div>
+    <div style="display:flex;justify-content:space-between;margin-top:14px"><button class="btn" onclick="acStep=4;rAcWiz()">← Back</button><button class="btn btn-blk" onclick="acStep=6;rAcWiz()">Review →</button></div>`;}
+  else if(acStep===6){
+    const pc2=acData.portalCode||acData.name.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'-');
+    body.innerHTML=`<div class="card" style="margin-bottom:14px"><div class="card-hd">${ic('checkc',13)} Review &amp; Save</div>
+      <div class="g2" style="margin-bottom:14px">${[['Name',acData.name],['Phone',acData.phone],['Email',acData.email],['Address',acData.address],['Portal code',pc2],['Reminder',acData.emailRemindDays+' days before']].map(([k,v])=>`<div style="padding:8px 12px;background:#f8f8f6;border-radius:9px"><div style="font-size:9px;color:#8f8d86;font-weight:700;text-transform:uppercase;letter-spacing:.05em">${k}</div><div style="font-size:13px;font-weight:700;margin-top:3px">${v}</div></div>`).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        ${[[acData.tasks.length,'tasks'],[acData.links.length,'extra links'],[acData.paints.length,'colors'],[acData.equipment.length,'equipment'],[(acData.warranties||[]).length,'warranties']].map(([n,l])=>`<span style="background:#eeeeec;color:#1c1c1c;padding:5px 13px;border-radius:9px;font-size:12px;font-weight:700">${n} ${l}</span>`).join('')}
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between"><button class="btn" onclick="acStep=5;rAcWiz()">← Back</button><button class="btn btn-blk" style="padding:10px 28px;font-size:14px" onclick="acSave()">${ic('check',14)} Save Client</button></div>`;}
+}
+function acN1(){const n=document.getElementById('a-nm').value.trim(),ph=document.getElementById('a-ph').value.trim(),em=document.getElementById('a-em').value.trim(),ad=document.getElementById('a-ad').value.trim();if(!n||!ph||!em||!ad)return alert('Please fill in all required fields.');const pc2=document.getElementById('a-pc').value.trim()||n.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'-');Object.assign(acData,{name:n,phone:ph,email:em,address:ad,portalCode:pc2,emailRemindDays:parseInt(document.getElementById('a-er').value),tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[]});acStep=2;rAcWiz();}
+function acAT(){const n=document.getElementById('nt-n').value.trim();if(!n)return;const fr=freqToDays(document.getElementById('nt-fn').value,document.getElementById('nt-fu').value);const ln=document.getElementById('nt-ln').value.trim(),lu=document.getElementById('nt-lu').value.trim();acData.tasks.push({id:Date.now(),name:n,icon:document.getElementById('nt-i').value||'wrench',freqDays:fr,nextDue:dFN(fr),history:[],link:(ln&&lu)?{name:ln,url:lu,store:'Amazon'}:null});rAcWiz();}
+function acAL(){const n=document.getElementById('nl-n').value.trim(),u=document.getElementById('nl-u').value.trim();if(!n||!u)return;acData.links.push({id:Date.now(),name:n,url:u,store:document.getElementById('nl-s').value,note:document.getElementById('nl-no').value});rAcWiz();}
+function acAP(){const a=document.getElementById('np-a').value.trim(),n=document.getElementById('np-n').value.trim();if(!a||!n)return;acData.paints.push({area:a,name:n,brand:document.getElementById('np-b').value,hex:document.getElementById('np-h').value,type:document.getElementById('np-t').value,sheen:document.getElementById('np-s').value});rAcWiz();}
+function acAE(){const nm=document.getElementById('ne-nm').value.trim();if(!nm)return;acData.equipment.push({id:Date.now(),category:document.getElementById('ne-c').value,name:nm,model:document.getElementById('ne-mo').value.trim(),specs:[]});rAcWiz();}
+function acAW(){const i=document.getElementById('aw-i').value.trim(),d=document.getElementById('aw-d').value;if(!i||!d)return;acData.warranties.push({id:Date.now(),item:i,brand:document.getElementById('aw-b').value,coverage:document.getElementById('aw-c').value,expires:d,files:[]});rAcWiz();}
+function acSave(){
+  const aclrs=[{bg:'#eeeeec',c:'#1c1c1c'},{bg:'#eef1e8',c:'#4c6b3f'},{bg:'#f6f0e3',c:'#8a6a2e'},{bg:'#eceaf0',c:'#55508a'}];
+  const ac=aclrs[DB.clients.length%aclrs.length];
+  const pc2=acData.portalCode||acData.name.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'-');
+  DB.clients.push({id:Date.now(),...acData,portalCode:pc2,avatarBg:ac.bg,avatarColor:ac.c,homeFiles:[],status:'Active'});
+  cid=DB.clients[DB.clients.length-1].id;rDB();rEM();selC(cid);
+}
+</script>
+</body>
+</html>
