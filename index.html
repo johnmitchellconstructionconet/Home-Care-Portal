@@ -320,6 +320,18 @@ try{
   }
 }catch(e){console.warn('Supabase client failed to initialize; running in local demo-data mode.',e);}
 
+async function fetchPublicBranding(){
+  if(!sb)return;
+  try{
+    const{data,error}=await sb.rpc('get_public_branding');
+    if(error||!data)return;
+    if(data.logo_url)DB.companySettings.logoDataUrl=data.logo_url;
+    if(data.logo_size_pct)DB.companySettings.logoSizePct=data.logo_size_pct;
+    if(data.company_name)DB.companySettings.companyName=data.company_name;
+    if(data.tagline)DB.companySettings.tagline=data.tagline;
+    rLogo();
+  }catch(e){console.warn('Could not load public branding (non-critical):',e);}
+}
 async function fetchClientPortal(portalCode,pin){
   if(!sb)return null;
   try{
@@ -697,7 +709,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
 
 <div id="login-screen" style="display:none;position:fixed;inset:0;background:#f8f8f6;z-index:999;align-items:center;justify-content:center">
   <div style="max-width:360px;width:90%;padding:32px;background:#fff;border:1px solid #e8e6e1;border-radius:16px;text-align:center;box-shadow:0 10px 30px rgba(20,20,18,.08)">
-    <div style="width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;margin:0 auto 16px">M</div>
+    <div id="login-logo" style="width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;margin:0 auto 16px">M</div>
     <div style="font-size:15px;font-weight:800;margin-bottom:3px">Staff Sign In</div>
     <div style="font-size:12px;color:#8f8d86;margin-bottom:22px">Mitchell Home Care Portal — Admin</div>
     <div class="fg" style="text-align:left"><label class="fl">Email</label><input class="fi" id="login-email" type="email" placeholder="you@mitchellconstructionco.net" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -710,7 +722,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
 
 <div id="pin-screen" style="display:none;position:fixed;inset:0;background:#f8f8f6;z-index:999;align-items:center;justify-content:center">
   <div style="max-width:360px;width:90%;padding:32px;background:#fff;border:1px solid #e8e6e1;border-radius:16px;text-align:center;box-shadow:0 10px 30px rgba(20,20,18,.08)">
-    <div style="width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;margin:0 auto 16px">M</div>
+    <div id="pin-logo" style="width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;margin:0 auto 16px">M</div>
     <div style="font-size:15px;font-weight:800;margin-bottom:3px">Enter Your Access PIN</div>
     <div style="font-size:12px;color:#8f8d86;margin-bottom:22px">Mitchell Home Care Portal</div>
     <div class="fg" style="text-align:left"><label class="fl">4-digit PIN</label><input class="fi" id="pin-input" type="tel" inputmode="numeric" maxlength="6" placeholder="••••" style="letter-spacing:.3em;font-size:18px;text-align:center" onkeydown="if(event.key==='Enter')submitPin()"></div>
@@ -730,13 +742,27 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
 // ═══════════════════════════════════════════
 function rLogo(){
   const s=DB.companySettings;
-  const wrap=document.getElementById('logo-wrap');if(!wrap)return;
-  if(s.logoDataUrl){
-    const h=Math.round(40*((s.logoSizePct||100)/100));
-    wrap.innerHTML=`<img src="${s.logoDataUrl}" style="max-height:${h}px;max-width:100%;object-fit:contain">`;
-  }else{
-    wrap.innerHTML=`<div><div class="logo-name">MITCHELL</div><div class="logo-rule"></div><div class="logo-sub">CONSTRUCTION &amp; DESIGN</div></div>`;
+  const wrap=document.getElementById('logo-wrap');
+  if(wrap){
+    if(s.logoDataUrl){
+      const h=Math.round(40*((s.logoSizePct||100)/100));
+      wrap.innerHTML=`<img src="${s.logoDataUrl}" style="max-height:${h}px;max-width:100%;object-fit:contain">`;
+    }else{
+      wrap.innerHTML=`<div><div class="logo-name">MITCHELL</div><div class="logo-rule"></div><div class="logo-sub">CONSTRUCTION &amp; DESIGN</div></div>`;
+    }
   }
+  // Login/PIN screens use a small square badge instead of the full wordmark —
+  // same logo image if one's set, otherwise the "M" fallback.
+  [['login-logo',40],['pin-logo',40]].forEach(([elId,box])=>{
+    const el=document.getElementById(elId);if(!el)return;
+    if(s.logoDataUrl){
+      el.innerHTML=`<img src="${s.logoDataUrl}" style="max-width:${box-8}px;max-height:${box-8}px;object-fit:contain">`;
+      el.style.border='none';
+    }else{
+      el.innerHTML='M';
+      el.style.border='1.5px solid #1c1c1c';
+    }
+  });
 }
 let clientOnlyMode=false;
 let pendingPortalCode=null;
@@ -821,6 +847,7 @@ async function checkAdminAuth(){
   });
 }
 window.onload=()=>{
+  fetchPublicBranding();
   const hashMatch=location.hash.match(/portal=([^&]+)/);
   const portalCode=(hashMatch&&decodeURIComponent(hashMatch[1]))||new URLSearchParams(location.search).get('portal');
   if(portalCode){document.getElementById('login-screen').style.display='none';initClientOnlyMode(portalCode);return;}
