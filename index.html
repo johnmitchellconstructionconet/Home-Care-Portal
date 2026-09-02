@@ -340,6 +340,224 @@ async function loadLiveClientData(id,pin){
 }
 
 // ═══════════════════════════════════════════
+// SUPABASE — ADMIN PERSISTENCE
+// This is what makes admin data survive a page reload. Every admin
+// mutation function calls syncClientToSupabase(c) (or the matching
+// helper for settings/vendors/team) after updating the local object,
+// so the UI stays instant while the write happens in the background.
+// If a write fails, the change stays visible locally but won't
+// survive a reload — syncFailed() surfaces that instead of hiding it.
+// ═══════════════════════════════════════════
+function toISO(d){
+  try{const dt=new Date(d);if(isNaN(dt.getTime()))return new Date().toISOString();return dt.toISOString();}
+  catch(e){return new Date().toISOString();}
+}
+function syncFailed(what,err){
+  console.warn(`Supabase sync failed (${what}):`,err);
+  const el=document.getElementById('sync-warning');
+  if(el){el.style.display='block';el.textContent=`⚠ Couldn't save "${what}" to the database — this change may be lost on reload. (${err&&err.message?err.message:'connection issue'})`;}
+}
+function syncOk(){
+  const el=document.getElementById('sync-warning');
+  if(el)el.style.display='none';
+}
+
+async function syncClientToSupabase(c){
+  if(!sb||clientOnlyMode)return;
+  try{
+    const row={name:c.name,address:c.address,phone:c.phone,email:c.email,portal_code:c.portalCode,pin:c.pin,email_remind_days:c.emailRemindDays,status:c.status||'Active',avatar_bg:c.avatarBg,avatar_color:c.avatarColor,notes:c.notes||''};
+    let dbId=c._dbId;
+    if(dbId){
+      const{error}=await sb.from('clients').update(row).eq('id',dbId);
+      if(error){syncFailed('client info',error);return;}
+    }else{
+      const oldId=c.id;
+      const{data,error}=await sb.from('clients').insert(row).select('id').single();
+      if(error){syncFailed('new client',error);return;}
+      dbId=data.id;c._dbId=dbId;c.id=dbId;
+      if(cid===oldId)cid=dbId;
+    }
+
+    // Tasks + history — full resync (delete then reinsert). Simple and
+    // reliable at the data volumes a home-care portal actually has.
+    await sb.from('tasks').delete().eq('client_id',dbId);
+    for(const t of (c.tasks||[])){
+      const{data:taskRow,error:tErr}=await sb.from('tasks').insert({
+        client_id:dbId,name:t.name,icon:t.icon,freq_days:t.freqDays,next_due:t.nextDue,
+        link_name:t.link?t.link.name:null,link_url:t.link?t.link.url:null,link_store:t.link?t.link.store:null
+      }).select('id').single();
+      if(tErr){syncFailed('task: '+t.name,tErr);continue;}
+      t.id=taskRow.id;t._dbId=taskRow.id;
+      if(t.history&&t.history.length){
+        const{error:hErr}=await sb.from('task_history').insert(t.history.map(h=>({task_id:taskRow.id,completed_at:toISO(h)})));
+        if(hErr)syncFailed('task history: '+t.name,hErr);
+      }
+    }
+
+    await sb.from('paints').delete().eq('client_id',dbId);
+    if((c.paints||[]).length){
+      const{error}=await sb.from('paints').insert(c.paints.map(p=>({client_id:dbId,area:p.area,name:p.name,brand:p.brand,hex:p.hex,type:p.type||'Paint',sheen:p.sheen})));
+      if(error)syncFailed('paint & stain colors',error);
+    }
+
+    await sb.from('equipment').delete().eq('client_id',dbId);
+    for(const e of (c.equipment||[])){
+      const{data:eqRow,error:eErr}=await sb.from('equipment').insert({client_id:dbId,category:e.category,name:e.name,model:e.model}).select('id').single();
+      if(eErr){syncFailed('equipment: '+e.name,eErr);continue;}
+      if(e.specs&&e.specs.length){
+        const{error:sErr}=await sb.from('equipment_specs').insert(e.specs.map(s=>({equipment_id:eqRow.id,label:s.label,value:s.value})));
+        if(sErr)syncFailed('equipment details: '+e.name,sErr);
+      }
+    }
+
+    await sb.from('warranties').delete().eq('client_id',dbId);
+    if((c.warranties||[]).length){
+      const{error}=await sb.from('warranties').insert(c.warranties.map(w=>({client_id:dbId,item:w.item,brand:w.brand,coverage:w.coverage,expires:w.expires})));
+      if(error)syncFailed('warranties',error);
+    }
+
+    await sb.from('reorder_links').delete().eq('client_id',dbId);
+    if((c.links||[]).length){
+      const{error}=await sb.from('reorder_links').insert(c.links.map(l=>({client_id:dbId,name:l.name,url:l.url,store:l.store,note:l.note})));
+      if(error)syncFailed('reorder links',error);
+    }
+
+    await sb.from('client_vendors').delete().eq('client_id',dbId);
+    if((c.vendorIds||[]).length){
+      const{error}=await sb.from('client_vendors').insert(c.vendorIds.map(vid=>({client_id:dbId,vendor_id:vid})));
+      if(error)syncFailed('vendor assignments',error);
+    }
+
+    syncOk();
+    // Every ID (client, tasks, equipment) is now the real database ID —
+    // refresh whatever's currently on screen so any buttons drawn with a
+    // temporary local ID pick up the real one.
+    rDB();rSB();
+    if(page==='client-detail'&&cid===c.id)rCDB(cid,dtab);
+    if(page==='portal'&&cid===c.id)rPortal(cid);
+  }catch(e){syncFailed(c.name||'client',e);}
+}
+
+async function syncCompanySettings(){
+  if(!sb)return;
+  try{
+    const s=DB.companySettings;
+    const{error}=await sb.from('company_settings').update({
+      company_name:s.companyName,tagline:s.tagline,email:s.email,phone:s.phone,
+      amazon_tag:s.amazonTag,buildertrend_url:s.builderTrendUrl,portal_base_url:s.portalBaseUrl,
+      from_name:s.fromName,from_email:s.fromEmail,heads_up_days:s.headsUpDays,
+      overdue_repeat_days:s.overdueRepeatDays,monthly_recap_day:s.monthlyRecapDay,
+      logo_url:s.logoDataUrl,logo_size_pct:s.logoSizePct,program_color:s.programColor,nav_color:s.navColor
+    }).eq('id',1);
+    if(error)syncFailed('company settings',error);else syncOk();
+  }catch(e){syncFailed('company settings',e);}
+}
+
+async function syncVendor(v){
+  if(!sb)return;
+  try{
+    const row={name:v.name,trade:v.trade,phone:v.phone,email:v.email,website:v.website,note:v.note};
+    if(v._dbId){
+      const{error}=await sb.from('vendors').update(row).eq('id',v._dbId);
+      if(error)syncFailed('vendor: '+v.name,error);else syncOk();
+    }else{
+      const{data,error}=await sb.from('vendors').insert(row).select('id').single();
+      if(error){syncFailed('new vendor: '+v.name,error);return;}
+      v._dbId=data.id;v.id=data.id;syncOk();
+    }
+  }catch(e){syncFailed('vendor: '+v.name,e);}
+}
+async function deleteVendorFromSupabase(v){
+  if(!sb||!v._dbId)return;
+  try{const{error}=await sb.from('vendors').delete().eq('id',v._dbId);if(error)syncFailed('deleting vendor',error);}
+  catch(e){syncFailed('deleting vendor',e);}
+}
+async function syncVendorTrade(name){
+  if(!sb)return;
+  try{const{error}=await sb.from('vendor_trades').insert({name}).select().single();if(error&&error.code!=='23505')syncFailed('vendor trade',error);}
+  catch(e){syncFailed('vendor trade',e);}
+}
+
+async function syncTeamMember(m){
+  if(!sb)return;
+  try{
+    const row={name:m.name,email:m.email,role:m.role};
+    if(m._dbId){
+      const{error}=await sb.from('team_members').update(row).eq('id',m._dbId);
+      if(error)syncFailed('team member: '+m.name,error);
+    }else{
+      const{data,error}=await sb.from('team_members').insert(row).select('id').single();
+      if(error){syncFailed('new team member: '+m.name,error);return;}
+      m._dbId=data.id;
+    }
+    syncOk();
+  }catch(e){syncFailed('team member: '+m.name,e);}
+}
+async function deleteTeamMemberFromSupabase(m){
+  if(!sb||!m._dbId)return;
+  try{const{error}=await sb.from('team_members').delete().eq('id',m._dbId);if(error)syncFailed('removing team member',error);}
+  catch(e){syncFailed('removing team member',e);}
+}
+
+function mapDbClientToLocal(row){
+  return{
+    id:row.id,_dbId:row.id,name:row.name,address:row.address,phone:row.phone,email:row.email,
+    portalCode:row.portal_code,pin:row.pin,emailRemindDays:row.email_remind_days,
+    status:row.status||'Active',avatarBg:row.avatar_bg||'#eeeeec',avatarColor:row.avatar_color||'#1c1c1c',notes:row.notes||'',
+    tasks:(row.tasks||[]).map(t=>({
+      id:t.id,_dbId:t.id,name:t.name,icon:t.icon||'wrench',freqDays:t.freq_days,nextDue:t.next_due,
+      history:(t.task_history||[]).slice().sort((a,b)=>new Date(b.completed_at)-new Date(a.completed_at)).map(h=>fD(h.completed_at.slice(0,10))),
+      link:t.link_name?{name:t.link_name,url:t.link_url,store:t.link_store}:null
+    })),
+    paints:(row.paints||[]).map(p=>({area:p.area,name:p.name,brand:p.brand,hex:p.hex,type:p.type,sheen:p.sheen})),
+    equipment:(row.equipment||[]).map(e=>({id:e.id,_dbId:e.id,category:e.category,name:e.name,model:e.model,specs:(e.equipment_specs||[]).map(s=>({label:s.label,value:s.value}))})),
+    warranties:(row.warranties||[]).map(w=>({id:w.id,item:w.item,brand:w.brand,coverage:w.coverage,expires:w.expires,files:(w.warranty_files||[]).map(f=>({name:f.name,size:f.size}))})),
+    links:(row.reorder_links||[]).map(r=>({id:r.id,name:r.name,url:r.url,store:r.store,note:r.note})),
+    homeFiles:(row.home_files||[]).map(f=>({id:f.id,name:f.name,category:f.category,size:f.size,uploadedBy:f.uploaded_by,uploaded:f.uploaded_at?fD(f.uploaded_at.slice(0,10)):''})),
+    vendorIds:(row.client_vendors||[]).map(cv=>cv.vendor_id)
+  };
+}
+
+async function loadAllAdminData(){
+  if(!sb)return false;
+  try{
+    const clientsQ=sb.from('clients').select('*,tasks(*,task_history(*)),paints(*),equipment(*,equipment_specs(*)),warranties(*,warranty_files(*)),reorder_links(*),home_files(*),client_vendors(vendor_id)').order('id');
+    const settingsQ=sb.from('company_settings').select('*').eq('id',1).single();
+    const tradesQ=sb.from('vendor_trades').select('name').order('id');
+    const vendorsQ=sb.from('vendors').select('*').order('id');
+    const teamQ=sb.from('team_members').select('*').order('id');
+    const[clientsRes,settingsRes,tradesRes,vendorsRes,teamRes]=await Promise.all([clientsQ,settingsQ,tradesQ,vendorsQ,teamQ]);
+
+    if(clientsRes.error){console.warn('Could not load clients from Supabase — staying in local mode.',clientsRes.error);return false;}
+    DB.clients=(clientsRes.data||[]).map(mapDbClientToLocal);
+
+    if(!settingsRes.error&&settingsRes.data){
+      const s=settingsRes.data;
+      DB.companySettings.companyName=s.company_name||DB.companySettings.companyName;
+      DB.companySettings.tagline=s.tagline||DB.companySettings.tagline;
+      DB.companySettings.email=s.email||DB.companySettings.email;
+      DB.companySettings.phone=s.phone||DB.companySettings.phone;
+      DB.companySettings.amazonTag=s.amazon_tag||DB.companySettings.amazonTag;
+      DB.companySettings.builderTrendUrl=s.buildertrend_url||'';
+      DB.companySettings.portalBaseUrl=s.portal_base_url||'';
+      DB.companySettings.fromName=s.from_name||DB.companySettings.fromName;
+      DB.companySettings.fromEmail=s.from_email||'';
+      DB.companySettings.headsUpDays=s.heads_up_days||7;
+      DB.companySettings.overdueRepeatDays=s.overdue_repeat_days||7;
+      DB.companySettings.monthlyRecapDay=s.monthly_recap_day||1;
+      DB.companySettings.logoDataUrl=s.logo_url||null;
+      DB.companySettings.logoSizePct=s.logo_size_pct||100;
+      DB.companySettings.programColor=s.program_color||DB.companySettings.programColor;
+      DB.companySettings.navColor=s.nav_color||DB.companySettings.navColor;
+    }
+    if(!tradesRes.error&&tradesRes.data&&tradesRes.data.length)DB.vendorTrades=tradesRes.data.map(t=>t.name);
+    if(!vendorsRes.error&&vendorsRes.data)DB.vendors=vendorsRes.data.map(v=>({id:v.id,_dbId:v.id,name:v.name,trade:v.trade,phone:v.phone,email:v.email,website:v.website,note:v.note}));
+    if(!teamRes.error&&teamRes.data&&teamRes.data.length)DB.companySettings.team=teamRes.data.map(t=>({id:t.id,_dbId:t.id,name:t.name,email:t.email,role:t.role}));
+    return true;
+  }catch(e){console.warn('Supabase load failed — staying in local mode.',e);return false;}
+}
+
+// ═══════════════════════════════════════════
 // DATA — local demo/seed data. Used as-is when Supabase is
 // unreachable or a client has no live data yet, so the app keeps
 // working standalone.
@@ -412,6 +630,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
     <div><div class="tb-title" id="tb-title">Dashboard</div><div class="tb-sub" id="tb-sub">Mitchell Home Care Portal</div></div>
     <div class="tb-actions" id="tb-act"></div>
   </div>
+  <div id="sync-warning" style="display:none;background:#f5e9e8;color:#9a3b3b;font-size:12px;font-weight:600;padding:8px 24px;border-bottom:1px solid #e8b8b5"></div>
   <div class="page active" id="page-dashboard"><div class="pg-body" id="db-body"></div></div>
   <div class="page" id="page-emails"><div class="pg-body" id="em-body"></div></div>
   <div class="page" id="page-vendors"><div class="pg-body" id="vnd-body"></div></div>
@@ -518,10 +737,11 @@ async function submitPin(){
   document.getElementById('app').style.display='flex';
   gP('portal');rPortal(shell.id);sPT('home');
 }
-function initAdminApp(){
+async function initAdminApp(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('sb-signout').style.display=sb?'block':'none';
+  await loadAllAdminData();
   applyBrandingVars();rLogo();
   rSB();rDB();rEM();rVND();rSET();setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
 }
@@ -617,7 +837,7 @@ function projStats(c){
   return{open,overdue,onSchedule};
 }
 function setDbTab(t){dbTab=t;rDB();}
-function setClientStatus(id,val){gC(id).status=val;rDB();}
+function setClientStatus(id,val){gC(id).status=val;rDB();syncClientToSupabase(gC(id));}
 function rDB(){
   const all=DB.clients.flatMap(c=>c.tasks.map(t=>({...t,client:c})));
   const od=all.filter(t=>dU(t.nextDue)<0),soon=all.filter(t=>{const d=dU(t.nextDue);return d>=0&&d<=7;});
@@ -747,7 +967,7 @@ function rVG(){
       ${v.website?`<a href="${v.website}" target="_blank" style="font-size:11px;color:#1c1c1c;font-weight:700;text-decoration:none">↗ Website</a>`:''}
     </div>`).join('');
 }
-function delV(id){DB.vendors=DB.vendors.filter(v=>v.id!==id);rVG();}
+function delV(id){const v=DB.vendors.find(x=>x.id===id);DB.vendors=DB.vendors.filter(v=>v.id!==id);rVG();if(v)deleteVendorFromSupabase(v);}
 function oAddVendor(){
   oM(`<div class="modal-title">${ic('wrench',15)} Add Vendor</div>
     <div class="fr"><div class="fg"><label class="fl">Company name *</label><input class="fi" id="vn-n" placeholder="Company name"></div>
@@ -767,7 +987,7 @@ function addVendorTrade(){
   const sel=document.getElementById('vn-t');
   sel.innerHTML=DB.vendorTrades.map(t=>`<option${t===trimmed?' selected':''}>${t}</option>`).join('')+'<option value="__new__">+ Add new trade…</option>';
 }
-function savV(){const n=document.getElementById('vn-n').value.trim();if(!n)return alert('Enter a company name.');DB.vendors.push({id:Date.now(),name:n,trade:document.getElementById('vn-t').value,phone:document.getElementById('vn-p').value,email:document.getElementById('vn-e').value,website:document.getElementById('vn-w').value,note:document.getElementById('vn-no').value});cM();rVG();}
+function savV(){const n=document.getElementById('vn-n').value.trim();if(!n)return alert('Enter a company name.');const v={id:Date.now(),name:n,trade:document.getElementById('vn-t').value,phone:document.getElementById('vn-p').value,email:document.getElementById('vn-e').value,website:document.getElementById('vn-w').value,note:document.getElementById('vn-no').value};DB.vendors.push(v);cM();rVG();syncVendor(v);}
 
 // ═══════════════════════════════════════════
 // COMPANY SETTINGS (Amazon Associates tag + branding)
@@ -873,6 +1093,7 @@ function saveSet(){
   DB.companySettings.builderTrendUrl=document.getElementById('set-bt').value.trim();
   DB.companySettings.portalBaseUrl=document.getElementById('set-portal-url').value.trim().replace(/\/$/,'');
   rSET();rEM();rLogo();
+  syncCompanySettings();
   alert('Settings saved.');
 }
 function saveEmailSettings(){
@@ -882,6 +1103,7 @@ function saveEmailSettings(){
   DB.companySettings.overdueRepeatDays=parseInt(document.getElementById('set-overdue-repeat').value);
   DB.companySettings.monthlyRecapDay=parseInt(document.getElementById('set-recap-day').value);
   rSET();
+  syncCompanySettings();
   alert('Email settings saved.');
 }
 function handleLogoUpload(input){
@@ -920,16 +1142,19 @@ function saveBranding(){
   DB.companySettings.navColor=document.getElementById('set-navbg').value.trim()||'#ffffff';
   DB.companySettings.logoSizePct=parseInt(document.getElementById('set-logo-size').value)||100;
   applyBrandingVars();rLogo();
+  syncCompanySettings();
   alert('Branding saved.');
 }
 function addTeamMember(){
   const n=document.getElementById('tm-name').value.trim(),e=document.getElementById('tm-email').value.trim(),r=document.getElementById('tm-role').value.trim();
   if(!n||!e)return alert('Enter at least a name and email.');
-  DB.companySettings.team.push({name:n,email:e,role:r||'Team Member'});
+  const m={name:n,email:e,role:r||'Team Member'};
+  DB.companySettings.team.push(m);
   rSET();
+  syncTeamMember(m);
 }
-function editTeamMember(i,field,val){DB.companySettings.team[i][field]=val.trim();}
-function removeTeamMember(i){DB.companySettings.team.splice(i,1);rSET();}
+function editTeamMember(i,field,val){DB.companySettings.team[i][field]=val.trim();syncTeamMember(DB.companySettings.team[i]);}
+function removeTeamMember(i){const m=DB.companySettings.team[i];DB.companySettings.team.splice(i,1);rSET();if(m)deleteTeamMemberFromSupabase(m);}
 
 // ═══════════════════════════════════════════
 // CLIENT DETAIL (ADMIN)
@@ -1021,7 +1246,7 @@ function rCDB(id,tab){
           </div>`).join('')}
       </div>`).join('')||'<div class="card" style="padding:18px;font-size:13px;color:#8f8d86;text-align:center">No equipment added yet.</div>'}
     <div class="card" style="margin-top:16px"><div class="card-hd">${ic('note',13)} Home Notes</div>
-      <textarea style="width:100%;padding:10px 13px;border:1.5px solid #e8e6e1;border-radius:9px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical;min-height:70px" onchange="gC(${id}).notes=this.value">${c.notes||''}</textarea>
+      <textarea style="width:100%;padding:10px 13px;border:1.5px solid #e8e6e1;border-radius:9px;font-size:13px;font-family:'Inter',sans-serif;resize:vertical;min-height:70px" onchange="gC(${id}).notes=this.value;syncClientToSupabase(gC(${id}))">${c.notes||''}</textarea>
     </div>`;
   }
   else if(tab==='warranty'){
@@ -1065,20 +1290,20 @@ function rCDB(id,tab){
   else if(tab==='settings'){
     body.innerHTML=`<div class="g2">
       <div class="card"><div class="card-hd">${ic('settings',13)} Client Info</div>
-        <div class="fg"><label class="fl">Full name</label><input class="fi" value="${c.name}" onchange="gC(${id}).name=this.value;rSB()"></div>
-        <div class="fr"><div class="fg"><label class="fl">Phone</label><input class="fi" value="${c.phone}" onchange="gC(${id}).phone=this.value"></div><div class="fg"><label class="fl">Email</label><input class="fi" value="${c.email}" onchange="gC(${id}).email=this.value"></div></div>
-        <div class="fg"><label class="fl">Address</label><input class="fi" value="${c.address}" onchange="gC(${id}).address=this.value"></div>
+        <div class="fg"><label class="fl">Full name</label><input class="fi" value="${c.name}" onchange="gC(${id}).name=this.value;rSB();syncClientToSupabase(gC(${id}))"></div>
+        <div class="fr"><div class="fg"><label class="fl">Phone</label><input class="fi" value="${c.phone}" onchange="gC(${id}).phone=this.value;syncClientToSupabase(gC(${id}))"></div><div class="fg"><label class="fl">Email</label><input class="fi" value="${c.email}" onchange="gC(${id}).email=this.value;syncClientToSupabase(gC(${id}))"></div></div>
+        <div class="fg"><label class="fl">Address</label><input class="fi" value="${c.address}" onchange="gC(${id}).address=this.value;syncClientToSupabase(gC(${id}))"></div>
         <div class="fg"><label class="fl">Email reminder window</label>
-          <select class="fi" onchange="gC(${id}).emailRemindDays=parseInt(this.value)">${[1,3,5,7,14].map(n=>`<option value="${n}"${c.emailRemindDays===n?' selected':''}>${n} days before</option>`).join('')}</select>
+          <select class="fi" onchange="gC(${id}).emailRemindDays=parseInt(this.value);syncClientToSupabase(gC(${id}))">${[1,3,5,7,14].map(n=>`<option value="${n}"${c.emailRemindDays===n?' selected':''}>${n} days before</option>`).join('')}</select>
         </div>
       </div>
       <div class="card"><div class="card-hd">${ic('link',13)} Client Portal Link</div>
         <div style="font-size:12px;color:#8f8d86;margin-bottom:8px">Share this link plus the PIN below — the client needs both to get in.</div>
         ${DB.companySettings.portalBaseUrl?'':`<div class="alert alert-warn" style="margin-bottom:12px">${ic('warn',13)}<div>No Portal Base URL set yet — set it in <a href="#" onclick="gP('settings');return false" style="color:#8a6a2e;font-weight:700;text-decoration:underline">Company Settings</a> before sharing links or printing labels, or they'll point nowhere.</div></div>`}
-        <div class="fg"><label class="fl">Portal code</label><input class="fi" value="${c.portalCode}" onchange="gC(${id}).portalCode=this.value;document.getElementById('plnk').textContent=portalUrl(this.value)||'[ Set your Portal Base URL in Company Settings ]'"></div>
+        <div class="fg"><label class="fl">Portal code</label><input class="fi" value="${c.portalCode}" onchange="gC(${id}).portalCode=this.value;document.getElementById('plnk').textContent=portalUrl(this.value)||'[ Set your Portal Base URL in Company Settings ]';syncClientToSupabase(gC(${id}))"></div>
         <div class="link-copy"><span class="link-code" id="plnk">${portalUrl(c.portalCode)||'[ Set your Portal Base URL in Company Settings ]'}</span><button class="btn btn-sm" onclick="const u=portalUrl('${c.portalCode}');if(!u){alert('Set your Portal Base URL in Company Settings first.');return;}navigator.clipboard.writeText(u).then(()=>this.textContent='Copied!').catch(()=>alert('Copy failed'))">Copy</button></div>
         <div class="fg" style="margin-top:14px"><label class="fl">Access PIN</label>
-          <div style="display:flex;gap:8px"><input class="fi" id="pin-field-${id}" value="${c.pin||''}" maxlength="6" style="letter-spacing:.2em;font-weight:700" onchange="gC(${id}).pin=this.value.trim()"><button class="btn btn-sm" onclick="regenPin(${id})">Regenerate</button></div>
+          <div style="display:flex;gap:8px"><input class="fi" id="pin-field-${id}" value="${c.pin||''}" maxlength="6" style="letter-spacing:.2em;font-weight:700" onchange="gC(${id}).pin=this.value.trim();syncClientToSupabase(gC(${id}))"><button class="btn btn-sm" onclick="regenPin(${id})">Regenerate</button></div>
         </div>
         <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-sm" onclick="printRecord(${id})">${ic('printer',12)} Print Full Maintenance Record</button>
@@ -1164,7 +1389,7 @@ function savWF(id,wIdx){
   cM();rCDB(id,'warranty');
 }
 function delWF(id,wIdx,fIdx){const c=gC(id);c.warranties[wIdx].files.splice(fIdx,1);rCDB(id,'warranty');}
-function delW(id,i){const c=gC(id);c.warranties.splice(i,1);rCDB(id,'warranty');}
+function delW(id,i){const c=gC(id);c.warranties.splice(i,1);rCDB(id,'warranty');syncClientToSupabase(c);}
 
 // ═══════════════════════════════════════════
 // TASK COMPLETION
@@ -1196,6 +1421,7 @@ function markDone(cid2,tid,isPortal){
   t.nextDue=dFN(t.freqDays);
   if(isPortal){rPB(cid2,'tasks');document.getElementById('pt-hero')&&rPortal(cid2);}
   else{rCDB(cid2,'tasks');rDB();}
+  syncClientToSupabase(c);
 }
 function showHist(cid2,tid){
   const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
@@ -1514,11 +1740,11 @@ function printQRLabel(id){
 // ═══════════════════════════════════════════
 // DATA MUTATIONS
 // ═══════════════════════════════════════════
-function delT(cid2,tid){const c=gC(cid2);c.tasks=c.tasks.filter(t=>t.id!==tid);rCDB(cid2,'tasks');rPortal(cid2);rDB();}
-function regenPin(cid2){const c=gC(cid2);c.pin=String(Math.floor(1000+Math.random()*9000));rCDB(cid2,'settings');}
-function delL(cid2,lid){const c=gC(cid2);c.links=c.links.filter(l=>l.id!==lid);rCDB(cid2,'links');}
-function toggleClientVendor(cid2,vid){const c=gC(cid2);if(!c.vendorIds)c.vendorIds=[];const i=c.vendorIds.indexOf(vid);if(i>-1)c.vendorIds.splice(i,1);else c.vendorIds.push(vid);rCDB(cid2,'vendors');}
-function delP(cid2,i){const c=gC(cid2);c.paints.splice(i,1);rCDB(cid2,'paint');}
+function delT(cid2,tid){const c=gC(cid2);c.tasks=c.tasks.filter(t=>t.id!==tid);rCDB(cid2,'tasks');rPortal(cid2);rDB();syncClientToSupabase(c);}
+function regenPin(cid2){const c=gC(cid2);c.pin=String(Math.floor(1000+Math.random()*9000));rCDB(cid2,'settings');syncClientToSupabase(c);}
+function delL(cid2,lid){const c=gC(cid2);c.links=c.links.filter(l=>l.id!==lid);rCDB(cid2,'links');syncClientToSupabase(c);}
+function toggleClientVendor(cid2,vid){const c=gC(cid2);if(!c.vendorIds)c.vendorIds=[];const i=c.vendorIds.indexOf(vid);if(i>-1)c.vendorIds.splice(i,1);else c.vendorIds.push(vid);rCDB(cid2,'vendors');syncClientToSupabase(c);}
+function delP(cid2,i){const c=gC(cid2);c.paints.splice(i,1);rCDB(cid2,'paint');syncClientToSupabase(c);}
 
 // ═══════════════════════════════════════════
 // MODALS — ADD / EDIT TASK (with optional per-task reorder link)
@@ -1544,7 +1770,7 @@ function savT(){
   const c=gC(cid);
   c.tasks.push({id:Date.now(),name:n,icon:document.getElementById('mt-i').value||'wrench',freqDays,nextDue:document.getElementById('mt-d').value,history:[],
     link:(ln&&lu)?{name:ln,url:lu,store:document.getElementById('mt-ls').value}:null});
-  cM();rCDB(cid,'tasks');rPortal(cid);rDB();
+  cM();rCDB(cid,'tasks');rPortal(cid);rDB();syncClientToSupabase(c);
 }
 function oEditTask(cid2,tid){
   const c=gC(cid2),t=c.tasks.find(x=>x.id===tid);
@@ -1569,7 +1795,7 @@ function savEditT(cid2,tid){
   t.nextDue=document.getElementById('et-d').value||t.nextDue;
   const ln=document.getElementById('et-ln').value.trim(),lu=document.getElementById('et-lu').value.trim();
   t.link=(ln&&lu)?{name:ln,url:lu,store:document.getElementById('et-ls').value}:null;
-  cM();rCDB(cid2,'tasks');rPortal(cid2);
+  cM();rCDB(cid2,'tasks');rPortal(cid2);syncClientToSupabase(c);
 }
 
 function oAddLink(){oM(`<div class="modal-title">${ic('link',15)} Add Reorder Link</div>
@@ -1577,7 +1803,7 @@ function oAddLink(){oM(`<div class="modal-title">${ic('link',15)} Add Reorder Li
   <div class="fg"><label class="fl">URL *</label><input class="fi" id="ml-u" placeholder="https://amazon.com/..."></div>
   <div class="fr"><div class="fg"><label class="fl">Store</label><select class="fi" id="ml-s"><option>Amazon</option><option>Home Depot</option><option>Lowe's</option><option>Other</option></select></div><div class="fg"><label class="fl">Note</label><input class="fi" id="ml-no" placeholder="Optional"></div></div>
   <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savL()">Save Link</button></div>`);}
-function savL(){const n=document.getElementById('ml-n').value.trim(),u=document.getElementById('ml-u').value.trim();if(!n||!u)return alert('Fill in name and URL.');const c=gC(cid);c.links.push({id:Date.now(),name:n,url:u,store:document.getElementById('ml-s').value,note:document.getElementById('ml-no').value});cM();rCDB(cid,'links');}
+function savL(){const n=document.getElementById('ml-n').value.trim(),u=document.getElementById('ml-u').value.trim();if(!n||!u)return alert('Fill in name and URL.');const c=gC(cid);c.links.push({id:Date.now(),name:n,url:u,store:document.getElementById('ml-s').value,note:document.getElementById('ml-no').value});cM();rCDB(cid,'links');syncClientToSupabase(c);}
 
 function oAddPaint(){oM(`<div class="modal-title">${ic('palette',15)} Add Paint or Stain Color</div>
   <div class="fr"><div class="fg"><label class="fl">Area / Room *</label><input class="fi" id="pp-a" placeholder="Living room"></div><div class="fg"><label class="fl">Color name *</label><input class="fi" id="pp-n" placeholder="SW 7015 Repose Gray"></div></div>
@@ -1586,7 +1812,7 @@ function oAddPaint(){oM(`<div class="modal-title">${ic('palette',15)} Add Paint 
   <div class="fr"><div class="fg"><label class="fl">Brand</label><input class="fi" id="pp-b" placeholder="Sherwin-Williams"></div>
   <div class="fg"><label class="fl">Hex</label><div style="display:flex;gap:8px"><input type="color" id="pp-hp" value="#E8DDD0" style="width:44px;height:38px;border:1.5px solid #e8e6e1;border-radius:9px" oninput="document.getElementById('pp-h').value=this.value"><input class="fi" id="pp-h" value="#E8DDD0" oninput="document.getElementById('pp-hp').value=this.value"></div></div></div>
   <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savPnt()">Save Color</button></div>`);}
-function savPnt(){const a=document.getElementById('pp-a').value.trim(),n=document.getElementById('pp-n').value.trim();if(!a||!n)return alert('Fill in area and color name.');gC(cid).paints.push({area:a,name:n,brand:document.getElementById('pp-b').value,hex:document.getElementById('pp-h').value,type:document.getElementById('pp-t').value,sheen:document.getElementById('pp-s').value});cM();rCDB(cid,'paint');}
+function savPnt(){const a=document.getElementById('pp-a').value.trim(),n=document.getElementById('pp-n').value.trim();if(!a||!n)return alert('Fill in area and color name.');const c=gC(cid);c.paints.push({area:a,name:n,brand:document.getElementById('pp-b').value,hex:document.getElementById('pp-h').value,type:document.getElementById('pp-t').value,sheen:document.getElementById('pp-s').value});cM();rCDB(cid,'paint');syncClientToSupabase(c);}
 
 function oAddEquip(){oM(`<div class="modal-title">${ic('wrench',15)} Add Equipment</div>
   <div class="fr"><div class="fg"><label class="fl">Category *</label><select class="fi" id="eq-c">${EQUIP_CATS.map(c=>`<option>${c}</option>`).join('')}</select></div>
@@ -1601,10 +1827,11 @@ function oAddEquip(){oM(`<div class="modal-title">${ic('wrench',15)} Add Equipme
 function savEq(){
   const nm=document.getElementById('eq-nm').value.trim();if(!nm)return alert('Enter a name for this equipment.');
   const l=document.getElementById('eq-l').value.trim(),v=document.getElementById('eq-v').value.trim();
-  gC(cid).equipment.push({id:Date.now(),category:document.getElementById('eq-c').value,name:nm,model:document.getElementById('eq-mo').value.trim(),specs:(l&&v)?[{label:l,value:v}]:[]});
-  cM();rCDB(cid,'equipment');
+  const c=gC(cid);
+  c.equipment.push({id:Date.now(),category:document.getElementById('eq-c').value,name:nm,model:document.getElementById('eq-mo').value.trim(),specs:(l&&v)?[{label:l,value:v}]:[]});
+  cM();rCDB(cid,'equipment');syncClientToSupabase(c);
 }
-function delEquipUnit(cid2,uid){const c=gC(cid2);c.equipment=c.equipment.filter(u=>u.id!==uid);rCDB(cid2,'equipment');}
+function delEquipUnit(cid2,uid){const c=gC(cid2);c.equipment=c.equipment.filter(u=>u.id!==uid);rCDB(cid2,'equipment');syncClientToSupabase(c);}
 function oAddSpec(cid2,uid){
   oM(`<div class="modal-title">${ic('plus',15)} Add Detail</div>
   <div class="fg"><label class="fl">Label *</label><input class="fi" id="sp-l" placeholder="Filter size, Salt type, Serial number…"></div>
@@ -1614,16 +1841,16 @@ function oAddSpec(cid2,uid){
 function savSpec(cid2,uid){
   const l=document.getElementById('sp-l').value.trim(),v=document.getElementById('sp-v').value.trim();if(!l||!v)return alert('Fill in both fields.');
   const c=gC(cid2),u=c.equipment.find(x=>x.id===uid);if(!u.specs)u.specs=[];u.specs.push({label:l,value:v});
-  cM();rCDB(cid2,'equipment');
+  cM();rCDB(cid2,'equipment');syncClientToSupabase(c);
 }
-function delSpec(cid2,uid,si){const c=gC(cid2),u=c.equipment.find(x=>x.id===uid);u.specs.splice(si,1);rCDB(cid2,'equipment');}
+function delSpec(cid2,uid,si){const c=gC(cid2),u=c.equipment.find(x=>x.id===uid);u.specs.splice(si,1);rCDB(cid2,'equipment');syncClientToSupabase(c);}
 
 function oAddWarranty(){oM(`<div class="modal-title">${ic('shield',15)} Add Warranty</div>
   <div class="fr"><div class="fg"><label class="fl">Item / System *</label><input class="fi" id="wt-i" placeholder="HVAC System, Roof…"></div><div class="fg"><label class="fl">Brand</label><input class="fi" id="wt-b" placeholder="Carrier, GAF…"></div></div>
   <div class="fg"><label class="fl">Coverage description</label><input class="fi" id="wt-c" placeholder="10-yr parts, 1-yr labor"></div>
   <div class="fg"><label class="fl">Expiration date *</label><input class="fi" type="date" id="wt-d" value="${dFN(365*5)}"></div>
   <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-blk btn-sm" onclick="savWt()">Save Warranty</button></div>`);}
-function savWt(){const i=document.getElementById('wt-i').value.trim(),d=document.getElementById('wt-d').value;if(!i||!d)return alert('Fill in item and expiration date.');const c=gC(cid);if(!c.warranties)c.warranties=[];c.warranties.push({id:Date.now(),item:i,brand:document.getElementById('wt-b').value,coverage:document.getElementById('wt-c').value,expires:d,files:[]});cM();rCDB(cid,'warranty');}
+function savWt(){const i=document.getElementById('wt-i').value.trim(),d=document.getElementById('wt-d').value;if(!i||!d)return alert('Fill in item and expiration date.');const c=gC(cid);if(!c.warranties)c.warranties=[];c.warranties.push({id:Date.now(),item:i,brand:document.getElementById('wt-b').value,coverage:document.getElementById('wt-c').value,expires:d,files:[]});cM();rCDB(cid,'warranty');syncClientToSupabase(c);}
 
 // ═══════════════════════════════════════════
 // ADD CLIENT WIZARD
@@ -1712,8 +1939,10 @@ function acSave(){
   const aclrs=[{bg:'#eeeeec',c:'#1c1c1c'},{bg:'#eef1e8',c:'#4c6b3f'},{bg:'#f6f0e3',c:'#8a6a2e'},{bg:'#eceaf0',c:'#55508a'}];
   const ac=aclrs[DB.clients.length%aclrs.length];
   const pc2=acData.portalCode||acData.name.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,'-');
-  DB.clients.push({id:Date.now(),...acData,portalCode:pc2,avatarBg:ac.bg,avatarColor:ac.c,homeFiles:[],status:'Active'});
-  cid=DB.clients[DB.clients.length-1].id;rDB();rEM();selC(cid);
+  const newClient={id:Date.now(),...acData,portalCode:pc2,avatarBg:ac.bg,avatarColor:ac.c,homeFiles:[],status:'Active'};
+  DB.clients.push(newClient);
+  cid=newClient.id;rDB();rEM();selC(cid);
+  syncClientToSupabase(newClient); // saves in the background; see syncClientToSupabase for the ID handoff
 }
 </script>
 </body>
