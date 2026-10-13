@@ -145,6 +145,27 @@ input[type=color]{accent-color:#1c1c1c}
   background-image:url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%238f8d86" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>');
   background-repeat:no-repeat;background-position:right 6px center;background-size:11px;-webkit-appearance:none;appearance:none}
 .reorder-pill{display:flex;align-items:center;gap:6px;background:#f6f5f2;border:1px solid #edece9;border-radius:8px;padding:6px 10px;font-size:11px;color:#6b5738;font-weight:600}
+#agreement-screen{display:none;position:fixed;inset:0;background:#f8f8f6;z-index:998;align-items:center;justify-content:center;padding:12px}
+.agr-card{background:#fff;border:1px solid #e8e6e1;border-radius:16px;box-shadow:0 10px 30px rgba(20,20,18,.08);width:100%;max-width:680px;max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);display:flex;flex-direction:column;padding:24px 26px}
+.agr-head{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+.agr-badge{width:40px;height:40px;border:1.5px solid #1c1c1c;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1c1c1c;flex-shrink:0}
+.agr-card h2{font-size:16px;font-weight:800;line-height:1.3;color:#1c1c1c}
+.agr-ver{font-size:11px;color:#6f6d66;font-weight:600;margin-top:2px}
+.agr-intro{font-size:12.5px;color:#4a4a46;margin-bottom:10px}
+.agr-scroll{flex:1;min-height:140px;overflow-y:auto;border:1.5px solid #e8e6e1;border-radius:11px;padding:16px 18px;background:#fcfcfb;-webkit-overflow-scrolling:touch}
+.agr-scroll:focus-visible{outline:2px solid #1c1c1c;outline-offset:2px}
+.agr-h{font-size:13px;font-weight:800;color:#1c1c1c;margin:16px 0 6px}
+.agr-h:first-child{margin-top:0}
+.agr-p{font-size:13px;line-height:1.65;color:#2c2c2a;margin:0 0 10px}
+.agr-check{display:flex;gap:11px;align-items:flex-start;margin:14px 0 4px;font-size:12.5px;line-height:1.5;color:#1c1c1c;cursor:pointer}
+.agr-check input{width:20px;height:20px;margin-top:1px;accent-color:#1c1c1c;flex-shrink:0;cursor:pointer}
+.agr-check input:focus-visible{outline:2px solid #1c1c1c;outline-offset:2px}
+#agr-accept{width:100%;justify-content:center;margin-top:10px;padding:12px 16px;font-size:13px}
+#agr-accept:disabled{opacity:.4;cursor:not-allowed}
+.agr-foot{font-size:11px;color:#6f6d66;margin-top:10px;text-align:center}
+@media (max-width:760px){.agr-card{padding:16px 14px;border-radius:14px}.agr-scroll{padding:12px}}
+.maint-note{font-size:11px;line-height:1.55;color:#6f6d66;margin:-4px 0 14px;padding:9px 12px;border-left:2px solid #d3d1cb;background:#fcfcfb;border-radius:0 8px 8px 0}
+.maint-note a{color:#1c1c1c;font-weight:700}
 @media print{
   #app{display:none!important}
   body{background:#fff}
@@ -329,6 +350,9 @@ async function fetchPublicBranding(){
     if(data.logo_size_pct)DB.companySettings.logoSizePct=data.logo_size_pct;
     if(data.company_name)DB.companySettings.companyName=data.company_name;
     if(data.tagline)DB.companySettings.tagline=data.tagline;
+    if(data.buildertrend_url)DB.companySettings.builderTrendUrl=data.buildertrend_url;
+    if(data.email)DB.companySettings.email=data.email;
+    if(data.phone)DB.companySettings.phone=data.phone;
     rLogo();
   }catch(e){console.warn('Could not load public branding (non-critical):',e);}
 }
@@ -337,6 +361,7 @@ async function fetchClientPortal(portalCode,pin){
   try{
     const{data,error}=await sb.rpc('get_client_portal',{p_portal_code:portalCode,p_pin:pin});
     if(error){console.warn('get_client_portal error, falling back to local demo data:',error);return null;}
+    if(data&&data.error==='agreement_required')return{__agreementRequired:true,agreement:data.agreement};
     if(!data||data.error){console.warn('get_client_portal returned no match for portal code / pin:',portalCode);return null;}
     return data;
   }catch(e){console.warn('Supabase unreachable, falling back to local demo data:',e);return null;}
@@ -366,6 +391,7 @@ function applyLivePortalData(c,live){
   c.warranties=(live.warranties||[]).map(w=>({id:w.id,item:w.item,brand:w.brand,coverage:w.coverage,expires:w.expires,files:[]}));
   c.links=(live.reorder_links||[]).map(r=>({id:r.id,name:r.name,url:r.url,store:r.store,note:r.note}));
   c._liveVendors=(live.vendors||[]).map(v=>({id:v.id,name:v.name,trade:v.trade,phone:v.phone,email:v.email,website:v.website,note:v.note}));
+  c.agreements=(live.agreements||[]).map(a=>({version:a.version,title:a.title,body:a.body,acceptedAt:a.accepted_at}));
   c._live=true;
 }
 // Verifies portalCode+pin locally against demo data. This is what keeps
@@ -378,6 +404,7 @@ function localPinCheck(portalCode,pin){
 async function loadLiveClientData(id,pin){
   const c=gC(id);if(!c)return false;
   const live=await fetchClientPortal(c.portalCode,pin);
+  if(live&&live.__agreementRequired){c._live=false;return false;} // admin preview of a homeowner who hasn't accepted: keep the admin's own copy
   if(live){applyLivePortalData(c,live);return true;}
   c._live=false;return false;
 }
@@ -643,6 +670,68 @@ const DB = {
   clients:[]
 };
 
+const AGREEMENT_V1_BODY=`1. Homeowner Responsibility
+
+The Home Care Portal is provided by Mitchell Construction & Design (MC&D) as a courtesy to assist homeowners with understanding, organizing, and tracking recommended property maintenance.
+
+All ongoing maintenance, preventative care, inspections, servicing, and general upkeep of the property remain the responsibility of the homeowner unless MC&D has expressly agreed otherwise in a separate written agreement.
+
+MC&D is not responsible for performing, scheduling, coordinating, supervising, monitoring, or verifying completion of maintenance activities identified within the portal.
+
+2. Maintenance Recommendations
+
+All suggested maintenance routines, schedules, and service intervals are provided for informational purposes only. They may not account for every property condition, product requirement, or manufacturer recommendation.
+
+The homeowner is responsible for following applicable manufacturer instructions, warranty requirements, and professional service recommendations.
+
+MC&D does not guarantee that the portal identifies every maintenance requirement necessary to properly care for the property.
+
+3. Maintenance Records
+
+Maintenance records, service dates, completion statuses, and historical activities displayed within the portal do not constitute verification or certification by MC&D that any maintenance activity has been properly performed.
+
+This applies regardless of whether records were entered by MC&D, the homeowner, or another party.
+
+Homeowners are responsible for verifying maintenance completion and maintaining supporting documentation.
+
+4. Notifications and Reminders
+
+Any reminders or notifications generated by the portal are supplemental conveniences and are not guaranteed to be accurate, complete, timely, or successfully delivered.
+
+Failure to receive a reminder does not transfer responsibility for maintenance to MC&D.
+
+5. Third-Party Service Providers
+
+Homeowners are responsible for selecting and hiring qualified professionals to perform maintenance and repairs.
+
+Unless separately agreed in writing, MC&D is not responsible for work performed by independent service providers hired directly by the homeowner.
+
+6. Maintenance-Related Damage
+
+To the extent permitted by applicable law, MC&D is not responsible for deterioration, equipment failure, property damage, or related expenses resulting from neglected maintenance, improper maintenance, misuse, normal wear and tear, or the acts or omissions of independently hired service providers.
+
+The inclusion or omission of a maintenance recommendation does not, by itself, establish an obligation for MC&D to inspect, prevent, or correct maintenance-related conditions.
+
+7. Construction Warranties
+
+This acknowledgment does not eliminate, replace, or modify any applicable written construction warranty, manufacturer warranty, contractual obligation, or responsibility imposed by law.
+
+Legitimate construction defects and warranty concerns remain subject to the applicable construction agreement, warranty documentation, and governing law.
+
+8. No Ongoing Monitoring Obligation
+
+MC&D does not continuously monitor the property, equipment, maintenance activities, or developing repair needs through the Home Care Portal.
+
+The homeowner is responsible for identifying problems, arranging inspections, and taking appropriate action to prevent further damage.
+
+9. Homeowner Acknowledgment
+
+By selecting "I Agree & Continue," the homeowner acknowledges having read and understood this disclosure and accepts responsibility for the ongoing maintenance and care of their property.
+
+The Home Care Portal is an informational resource and does not create an ongoing property management, inspection, maintenance, or service agreement with MC&D.`;
+// Local/offline mode only. When Supabase is connected these come from the database.
+DB.agreements={available:true,versions:[{id:1,version:'1.0',title:'Homeowner Maintenance Responsibility & Acknowledgment',body:AGREEMENT_V1_BODY,requires_acceptance:true,published_at:null}],acceptances:[]};
+
 let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData={};
 </script>
 
@@ -657,6 +746,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
     <div class="nav-item" id="nav-emails" onclick="gP('emails')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>Email Reminders</div>
     <div class="nav-item" id="nav-vendors" onclick="gP('vendors')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Vendor Directory</div>
     <div class="nav-item" id="nav-links" onclick="gP('links')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M9 15l6-6"/><path d="M13 6.5l1-1a3.5 3.5 0 1 1 5 5l-2 2"/><path d="M11 17.5l-1 1a3.5 3.5 0 1 1-5-5l2-2"/></svg></span>Client Links</div>
+    <div class="nav-item" id="nav-agreements" onclick="gP('agreements')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Agreements</div>
     <div class="nav-item" id="nav-settings" onclick="gP('settings')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>Company Settings</div>
   </div>
   <div id="cli-nav" style="display:none">
@@ -670,6 +760,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
     <div class="nav-item" id="cnav-files" onclick="sPT('files')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></span>Home Files</div>
     <div class="nav-item" id="cnav-vendors" onclick="sPT('vendors')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>Find a Vendor</div>
     <div class="nav-item" id="cnav-notes" onclick="sPT('notes')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Home Notes</div>
+    <div class="nav-item" id="cnav-legal" onclick="sPT('legal')"><span class="nav-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:-3px;flex-shrink:0"><path d="M6 2h9l3 3v17H6z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg></span>Legal &amp; Acknowledgments</div>
   </div>
   <div class="sb-footer">
     <div style="font-size:11px;font-weight:700;color:#1c1c1c">Mitchell Construction & Design</div>
@@ -689,6 +780,7 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
   <div class="page" id="page-vendors"><div class="pg-body" id="vnd-body"></div></div>
   <div class="page" id="page-links"><div class="pg-body" id="lnk-body"></div></div>
   <div class="page" id="page-settings"><div class="pg-body" id="set-body"></div></div>
+  <div class="page" id="page-agreements"><div class="pg-body" id="agr-body"></div></div>
   <div class="page" id="page-client-detail">
     <div id="cd-hero"></div>
     <div class="tab-bar" id="cd-tabs"></div>
@@ -732,6 +824,21 @@ let view='admin',page='dashboard',cid=1,dtab='tasks',ptab='home',acStep=1,acData
   </div>
 </div>
 
+<div id="agreement-screen" role="dialog" aria-modal="true" aria-labelledby="agr-title" aria-describedby="agr-intro" onkeydown="agrKeydown(event)">
+  <div class="agr-card">
+    <div class="agr-head">
+      <div id="agr-logo" class="agr-badge" aria-hidden="true">M</div>
+      <div><h2 id="agr-title" tabindex="-1"></h2><div id="agr-version" class="agr-ver"></div></div>
+    </div>
+    <p id="agr-intro" class="agr-intro">Please read this agreement, then confirm below to continue to your Home Care Portal.</p>
+    <div id="agr-scroll" class="agr-scroll" tabindex="0" role="region" aria-label="Agreement text"></div>
+    <label class="agr-check"><input type="checkbox" id="agr-check" onchange="agrToggle()"><span>I have read and understood this Homeowner Maintenance Responsibility &amp; Acknowledgment, and I accept responsibility for the ongoing maintenance and care of my property.</span></label>
+    <div id="agr-error" role="alert" style="display:none;color:#9a3b3b;font-size:12px;margin-top:6px"></div>
+    <button id="agr-accept" class="btn btn-blk" disabled onclick="acceptAgreement()">I Agree &amp; Continue</button>
+    <div class="agr-foot">You can view or download a copy anytime under Legal &amp; Acknowledgments.</div>
+  </div>
+</div>
+
 <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)cM()">
   <div class="modal" id="modal-inner"></div>
 </div>
@@ -753,7 +860,7 @@ function rLogo(){
   }
   // Login/PIN screens use a small square badge instead of the full wordmark —
   // same logo image if one's set, otherwise the "M" fallback.
-  [['login-logo',40],['pin-logo',40]].forEach(([elId,box])=>{
+  [['login-logo',40],['pin-logo',40],['agr-logo',40]].forEach(([elId,box])=>{
     const el=document.getElementById(elId);if(!el)return;
     if(s.logoDataUrl){
       el.innerHTML=`<img src="${s.logoDataUrl}" style="max-width:${box-8}px;max-height:${box-8}px;object-fit:contain">`;
@@ -781,34 +888,289 @@ async function submitPin(){
   const errEl=document.getElementById('pin-error');
   errEl.style.display='none';
   if(!/^\d{4,6}$/.test(pin)){errEl.textContent='Enter the PIN printed on your label or card.';errEl.style.display='block';return;}
+  const res=await attemptPortalLogin(code,pin);
+  if(res.status==='agreement'){
+    document.getElementById('pin-screen').style.display='none';
+    showAgreementGate(code,pin,res.agreement,res.localClientId);
+    return;
+  }
+  if(res.status!=='ok'){errEl.textContent='Incorrect PIN. Please try again or contact us.';errEl.style.display='block';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
+  enterClientPortal(res.shell);
+}
+// ═══════════════════════════════════════════
+// HOMEOWNER AGREEMENT / ACKNOWLEDGMENT
+// Real enforcement lives in the database (get_client_portal and
+// mark_task_done refuse until accepted). Everything below is the
+// interface for that, plus a local-only simulation used when
+// Supabase isn't connected so the flow can still be demoed.
+// ═══════════════════════════════════════════
+function escH(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function fmtUtc(iso){try{return new Date(iso).toISOString().replace('T',' ').slice(0,19)+' UTC';}catch(e){return String(iso||'');}}
+function fmtLocalLong(iso){try{return new Date(iso).toLocaleString('en-US',{year:'numeric',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});}catch(e){return '';}}
+function agrBodyHtml(text){
+  return String(text||'').split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean).map(p=>{
+    if(/^\d+\.\s+\S/.test(p)&&p.length<90&&p.indexOf('\n')<0)return `<h3 class="agr-h">${escH(p)}</h3>`;
+    return `<p class="agr-p">${escH(p).replace(/\n/g,'<br>')}</p>`;
+  }).join('');
+}
+function agrPublished(){return (DB.agreements.versions||[]).filter(v=>v.published_at).slice().sort((a,b)=>(new Date(b.published_at)-new Date(a.published_at))||(b.id-a.id));}
+function agrCurrent(){return agrPublished()[0]||null;}
+function agrRequired(){return agrPublished().find(v=>v.requires_acceptance)||null;}
+function agrAcceptancesFor(clientId){return (DB.agreements.acceptances||[]).filter(a=>String(a.client_id)===String(clientId)).slice().sort((a,b)=>new Date(b.accepted_at)-new Date(a.accepted_at));}
+function agrClientStatus(clientId){
+  const req=agrRequired(),accs=agrAcceptancesFor(clientId);
+  if(!req)return{state:'not_required',latest:accs[0]||null};
+  const ok=accs.some(a=>{const v=(DB.agreements.versions||[]).find(x=>String(x.id)===String(a.version_id));return v&&new Date(v.published_at)>=new Date(req.published_at);});
+  if(ok)return{state:'accepted',latest:accs[0]};
+  return{state:accs.length?'outdated':'pending',latest:accs[0]||null};
+}
+function localAgreementNeeded(clientId){
+  const st=agrClientStatus(clientId);
+  if(st.state==='accepted'||st.state==='not_required')return null;
+  const cur=agrCurrent();
+  return cur?{id:cur.id,version:cur.version,title:cur.title,body:cur.body}:null;
+}
+function clientAgreements(c){
+  if(c&&c.agreements&&c.agreements.length)return c.agreements;
+  return agrAcceptancesFor(c.id).map(a=>({version:a.version,title:a.agreement_title,body:a.agreement_text,acceptedAt:a.accepted_at}));
+}
 
-  const shell={id:'remote',name:'',address:'',phone:'',email:'',portalCode:code,pin,emailRemindDays:5,tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[],notes:'',status:'Active'};
-  let ok=false;
-
+let pendingAgreement=null;
+async function attemptPortalLogin(code,pin){
+  const shell={id:'remote',name:'',address:'',phone:'',email:'',portalCode:code,pin,emailRemindDays:5,tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[],notes:'',status:'Active',agreements:[]};
   if(sb){
     const live=await fetchClientPortal(code,pin);
-    if(live){applyLivePortalData(shell,live);shell._pin=pin;ok=true;}
+    if(live&&live.__agreementRequired)return{status:'agreement',agreement:live.agreement};
+    if(live){applyLivePortalData(shell,live);shell._pin=pin;return{status:'ok',shell};}
   }
-  if(!ok){
-    // Supabase unreachable or not yet connected — verify against local demo data instead,
-    // so the PIN gate is fully testable before Supabase is live.
-    const localMatch=localPinCheck(code,pin);
-    if(localMatch){Object.assign(shell,JSON.parse(JSON.stringify(localMatch)));shell._pin=pin;ok=true;}
+  const lm=localPinCheck(code,pin);
+  if(lm){
+    const need=localAgreementNeeded(lm.id);
+    if(need)return{status:'agreement',agreement:need,localClientId:lm.id};
+    Object.assign(shell,JSON.parse(JSON.stringify(lm)));
+    shell.agreements=agrAcceptancesFor(lm.id).map(a=>({version:a.version,title:a.agreement_title,body:a.agreement_text,acceptedAt:a.accepted_at}));
+    shell._pin=pin;
+    return{status:'ok',shell};
   }
-
-  if(!ok){errEl.textContent='Incorrect PIN. Please try again or contact us.';errEl.style.display='block';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
-
+  return{status:'bad'};
+}
+function enterClientPortal(shell){
+  DB.clients=DB.clients.filter(c=>c.id!==shell.id);
   DB.clients.push(shell);
   cid=shell.id;view='client';
   document.getElementById('pin-screen').style.display='none';
+  document.getElementById('agreement-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   gP('portal');rPortal(shell.id);sPT('home');
 }
+function showAgreementGate(code,pin,agr,localClientId,notice){
+  pendingAgreement={code,pin,agreement:agr,localClientId:localClientId==null?null:localClientId};
+  document.getElementById('agr-title').textContent=agr.title;
+  document.getElementById('agr-version').textContent='Version '+agr.version;
+  document.getElementById('agr-scroll').innerHTML=agrBodyHtml(agr.body);
+  document.getElementById('agr-scroll').scrollTop=0;
+  const cb=document.getElementById('agr-check');cb.checked=false;
+  const btn=document.getElementById('agr-accept');btn.disabled=true;btn.textContent='I Agree & Continue';
+  const err=document.getElementById('agr-error');
+  if(notice){err.textContent=notice;err.style.display='block';}else err.style.display='none';
+  rLogo();
+  document.getElementById('agreement-screen').style.display='flex';
+  setTimeout(()=>{const t=document.getElementById('agr-title');if(t)t.focus();},0);
+}
+function agrToggle(){document.getElementById('agr-accept').disabled=!document.getElementById('agr-check').checked;}
+function agrKeydown(e){
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();return;}  // cannot be dismissed
+  if(e.key==='Tab'){
+    const els=[document.getElementById('agr-scroll'),document.getElementById('agr-check'),document.getElementById('agr-accept')].filter(x=>x&&!x.disabled);
+    const first=els[0],last=els[els.length-1],a=document.activeElement;
+    if(e.shiftKey&&(a===first||!els.includes(a))){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&(a===last||!els.includes(a))){e.preventDefault();first.focus();}
+  }
+}
+async function acceptAgreement(){
+  const p=pendingAgreement;if(!p)return;
+  const cb=document.getElementById('agr-check'),btn=document.getElementById('agr-accept'),err=document.getElementById('agr-error');
+  if(!cb.checked)return;                       // acceptance is never recorded without the checkbox
+  err.style.display='none';btn.disabled=true;btn.textContent='Saving…';
+  let ok=false,stale=false;
+  if(p.localClientId!=null){
+    const lc=gC(p.localClientId),v=agrCurrent();
+    if(lc&&v&&String(v.id)===String(p.agreement.id)){
+      if(!agrAcceptancesFor(lc.id).some(a=>String(a.version_id)===String(v.id)))DB.agreements.acceptances.push({id:Date.now(),client_id:lc.id,client_name:lc.name,property_address:lc.address,version_id:v.id,version:v.version,agreement_title:v.title,agreement_text:v.body,status:'accepted',accepted_at:new Date().toISOString()});
+      ok=true;
+    }else stale=true;
+  }else if(sb){
+    try{
+      const{data,error}=await sb.rpc('accept_agreement',{p_portal_code:p.code,p_pin:p.pin,p_version_id:p.agreement.id,p_affirmed:true});
+      if(!error&&data&&data.success)ok=true;
+      else if(data&&data.error==='stale_version')stale=true;
+    }catch(e){}
+  }
+  if(ok){
+    const res=await attemptPortalLogin(p.code,p.pin);
+    if(res.status==='ok'){pendingAgreement=null;enterClientPortal(res.shell);return;}
+    if(res.status==='agreement'){showAgreementGate(p.code,p.pin,res.agreement,res.localClientId,'A newer version of the agreement is now required. Please review it to continue.');return;}
+  }
+  if(stale){
+    const res=await attemptPortalLogin(p.code,p.pin);
+    if(res.status==='agreement'){showAgreementGate(p.code,p.pin,res.agreement,res.localClientId,'The agreement was just updated. Please review the new version to continue.');return;}
+  }
+  err.textContent="We couldn't save your acceptance. Please check your connection and try again.";err.style.display='block';
+  btn.textContent='I Agree & Continue';btn.disabled=!cb.checked;
+}
+
+function agrWarrantyLinkHtml(){
+  const bt=DB.companySettings.builderTrendUrl;
+  return bt?`<a href="${escH(bt)}" target="_blank" rel="noopener">warranty request form</a>`:`<a href="#" onclick="sPT('warranty');return false">Warranties page</a>`;
+}
+function agrMaintenanceNotice(){
+  return `<div class="maint-note">Maintenance schedules and recommendations are provided as a courtesy. Homeowners are responsible for performing and coordinating all required maintenance. These recommendations do not constitute a warranty or ongoing maintenance service agreement with Mitchell Construction &amp; Design.<br>Noting a maintenance issue here is not the same as submitting a formal warranty request. To request warranty service, use our ${agrWarrantyLinkHtml()}.</div>`;
+}
+function oViewAgreement(i){
+  const a=clientAgreements(gC(cid))[i];if(!a)return;
+  oM(`<div class="modal-title">${escH(a.title)} — Version ${escH(a.version)}</div>
+    <div style="font-size:11.5px;color:#6f6d66;margin-bottom:10px">Accepted ${escH(fmtLocalLong(a.acceptedAt))} (${escH(fmtUtc(a.acceptedAt))})</div>
+    <div class="agr-scroll" style="max-height:55vh;min-height:0" tabindex="0" role="region" aria-label="Agreement text">${agrBodyHtml(a.body)}</div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Close</button><button class="btn btn-blk btn-sm" onclick="cM();printAgreement(${i})">${ic('printer',12)} Download PDF</button></div>`);
+}
+function printAgreement(i){
+  const c=gC(cid),a=clientAgreements(c)[i];if(!a)return;
+  const S=DB.companySettings;
+  setPrintPageSize('');
+  const pa=document.getElementById('print-area');pa.classList.remove('qr-label-page');
+  pa.innerHTML=`<div style="max-width:760px;margin:0 auto;padding:36px 24px;font-family:'Inter',sans-serif;color:#1c1c1c">
+    <div style="border-bottom:2px solid #1c1c1c;padding-bottom:14px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:18px;font-weight:800">${escH(S.companyName)}</div><div style="font-size:11px;color:#8f8d86">${escH(S.tagline)}</div></div>
+      <div style="text-align:right;font-size:11px;color:#8f8d86">${escH(S.phone)}<br>${escH(S.email)}</div>
+    </div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:4px">${escH(a.title)}</div>
+    <div style="font-size:11.5px;color:#4a4a46;margin-bottom:16px">Version ${escH(a.version)}</div>
+    <div style="font-size:11.5px;line-height:1.7;margin-bottom:20px;padding:10px 14px;border:1px solid #d3d1cb;border-radius:8px;background:#f8f8f6"><strong>Accepted by:</strong> ${escH(c.name)}<br><strong>Property:</strong> ${escH(c.address)}<br><strong>Accepted on:</strong> ${escH(fmtUtc(a.acceptedAt))} (${escH(fmtLocalLong(a.acceptedAt))})</div>
+    ${agrBodyHtml(a.body)}
+    <div style="margin-top:26px;padding-top:12px;border-top:1px solid #e8e6e1;font-size:10px;color:#8f8d86">This is a copy of the exact text accepted electronically through the ${escH(S.companyName)} Home Care Portal on the date shown above.</div>
+  </div>`;
+  window.print();
+}
+
+// ---------- admin side ----------
+async function sessionEmail(){try{const{data}=await sb.auth.getSession();return data&&data.session&&data.session.user?data.session.user.email:null;}catch(e){return null;}}
+async function loadAgreementsAdmin(){
+  if(!sb)return;
+  try{
+    const[v,a]=await Promise.all([sb.from('agreement_versions').select('*').order('id'),sb.from('agreement_acceptances').select('*').order('accepted_at',{ascending:false})]);
+    if(v.error||a.error){DB.agreements.available=false;DB.agreements.versions=[];DB.agreements.acceptances=[];return;}
+    DB.agreements.available=true;DB.agreements.versions=v.data||[];DB.agreements.acceptances=a.data||[];
+  }catch(e){DB.agreements.available=false;DB.agreements.versions=[];DB.agreements.acceptances=[];}
+}
+async function reloadAgreements(){await loadAgreementsAdmin();rAgreements();}
+function agrStateText(st,req){
+  if(st.state==='accepted')return`<span style="color:#4c6b3f;font-weight:700">Accepted</span> v${escH(st.latest.version)} · ${escH(fmtUtc(st.latest.accepted_at))}`;
+  if(st.state==='outdated')return`<span style="color:#8a6a2e;font-weight:700">Needs re-acceptance</span> · accepted v${escH(st.latest.version)}, v${escH(req?req.version:'')} now required`;
+  if(st.state==='pending')return`<span style="color:#9a3b3b;font-weight:700">Not yet accepted</span>`;
+  return`<span style="color:#8f8d86">No agreement required yet</span>`;
+}
+function rAgreements(){
+  const el=document.getElementById('agr-body');if(!el)return;
+  const A=DB.agreements;
+  if(A.available===false){el.innerHTML=`<div class="alert alert-warn">${ic('warn',15)}<div>The agreement tables aren't in your Supabase project yet. Run <strong>migration-agreements.sql</strong> in Supabase → SQL Editor, then reload this page.</div></div>`;return;}
+  const vers=(A.versions||[]).slice().sort((a,b)=>b.id-a.id),req=agrRequired(),cur=agrCurrent();
+  const stat=DB.clients.map(c=>({c,st:agrClientStatus(c.id)}));
+  const nAcc=stat.filter(x=>x.st.state==='accepted').length,nPend=stat.filter(x=>x.st.state==='pending').length,nOut=stat.filter(x=>x.st.state==='outdated').length;
+  el.innerHTML=`
+    <div class="alert alert-warn" style="margin-bottom:14px">${ic('warn',15)}<div><strong>Draft legal language.</strong> This text is proposed language that has not been reviewed by an attorney (pending review by Missouri construction counsel). Nothing is enforced until you <strong>publish</strong> a version, and a published version can never be edited — a change means a new version. Don't rely on it as legal advice or as guaranteed enforceable.</div></div>
+    <div class="g4" style="margin-bottom:16px">
+      <div class="metric"><div class="metric-v" style="font-size:22px">${cur?'v'+escH(cur.version):'—'}</div><div class="metric-l">${cur?'Published version':'Nothing published'}</div></div>
+      <div class="metric"><div class="metric-v">${nAcc}<span style="font-size:14px;color:#8f8d86"> / ${DB.clients.length}</span></div><div class="metric-l">Accepted</div></div>
+      <div class="metric"><div class="metric-v" style="color:${nPend?'#9a3b3b':'#1c1c1c'}">${nPend}</div><div class="metric-l">Not yet accepted</div></div>
+      <div class="metric"><div class="metric-v" style="color:${nOut?'#8a6a2e':'#1c1c1c'}">${nOut}</div><div class="metric-l">Needs re-acceptance</div></div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:11px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1;display:flex;justify-content:space-between;align-items:center"><span style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.06em">Agreement versions</span><button class="btn btn-blk btn-sm" onclick="oAgrEdit(null)">${ic('plus',12)} New Version</button></div>
+      ${vers.length?vers.map(v=>{
+        const n=new Set((A.acceptances||[]).filter(a=>String(a.version_id)===String(v.id)).map(a=>String(a.client_id))).size;
+        return`<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid #edece9;flex-wrap:wrap">
+          <div style="flex:1;min-width:220px"><div style="font-size:13px;font-weight:700">Version ${escH(v.version)} ${v.published_at?bdg('Published','#4c6b3f','#eef1e8'):bdg('Draft','#8a6a2e','#f6f0e3')}</div>
+            <div style="font-size:11px;color:#8f8d86;margin-top:2px">${escH(v.title)} · ${v.published_at?'Published '+escH(fmtUtc(v.published_at))+' · '+(v.requires_acceptance?'everyone must accept':'minor update, no re-acceptance'):'Draft — not enforced yet'}</div></div>
+          <div style="font-size:11.5px;color:#8f8d86">${n} accepted</div>
+          ${v.published_at?`<button class="btn btn-sm" onclick="oAgrView(${v.id})">View</button>`:`<button class="btn btn-sm" onclick="oAgrEdit(${v.id})">Edit</button><button class="btn btn-blk btn-sm" onclick="agrPublishDraft(${v.id})">Publish</button><button class="btn btn-sm" onclick="agrDeleteDraft(${v.id})">Delete</button>`}
+        </div>`;}).join(''):'<div style="padding:20px;text-align:center;color:#8f8d86;font-size:13px">No versions yet.</div>'}
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:11px 18px;background:#f8f8f6;border-bottom:1px solid #e8e6e1"><span style="font-size:10px;font-weight:700;color:#8f8d86;text-transform:uppercase;letter-spacing:.06em">Homeowner status</span></div>
+      ${stat.length?stat.map(({c,st})=>`<div style="display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid #edece9;flex-wrap:wrap">${ava(c,30)}<div style="flex:1;min-width:180px"><div style="font-size:13px;font-weight:600">${escH(c.name)}</div><div style="font-size:11.5px;color:#4a4a46;margin-top:1px">${agrStateText(st,req)}</div></div>${agrAcceptancesFor(c.id).length?`<button class="btn btn-sm" onclick="oAgrHistory('${String(c.id).replace(/'/g,'')}')">History</button>`:''}</div>`).join(''):'<div style="padding:20px;text-align:center;color:#8f8d86;font-size:13px">No clients yet.</div>'}
+    </div>`;
+}
+function oAgrView(id){
+  const v=DB.agreements.versions.find(x=>x.id===id);if(!v)return;
+  oM(`<div class="modal-title">Version ${escH(v.version)} — ${escH(v.title)}</div>
+    <div style="font-size:11.5px;color:#8f8d86;margin-bottom:10px">Published ${escH(fmtUtc(v.published_at))} · permanent, cannot be edited</div>
+    <div class="agr-scroll" style="max-height:55vh;min-height:0">${agrBodyHtml(v.body)}</div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Close</button></div>`);
+}
+function oAgrHistory(clientId){
+  const c=DB.clients.find(x=>String(x.id)===String(clientId));
+  const list=agrAcceptancesFor(clientId);
+  oM(`<div class="modal-title">Acceptance history — ${escH(c?c.name:'')}</div>
+    ${list.length?list.map(a=>`<div style="padding:10px 0;border-bottom:1px solid #edece9"><div style="font-size:13px;font-weight:700">Version ${escH(a.version)} <span style="font-weight:500;color:#8f8d86">— ${escH(a.agreement_title)}</span></div><div style="font-size:11.5px;color:#4a4a46">Accepted ${escH(fmtUtc(a.accepted_at))}</div></div>`).join(''):'<div style="color:#8f8d86;font-size:13px">No acceptances on record.</div>'}
+    <div style="font-size:11px;color:#8f8d86;margin-top:10px">Acceptance records are permanent and cannot be edited or deleted.</div>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Close</button></div>`);
+}
+function oAgrEdit(id){
+  const A=DB.agreements,v=id?A.versions.find(x=>x.id===id):null,base=v||agrCurrent()||{};
+  const next=base.version?String(base.version).replace(/(\d+)$/,m=>String(+m+1)):'1.0';
+  oM(`<div class="modal-title">${ic('note',15)} ${v?'Edit draft':'New version'}</div>
+    <input type="hidden" id="ag-id" value="${v?v.id:''}">
+    <div class="fr"><div class="fg"><label class="fl" for="ag-ver">Version label *</label><input class="fi" id="ag-ver" value="${escH(v?v.version:next)}"></div>
+    <div class="fg"><label class="fl" for="ag-title">Title *</label><input class="fi" id="ag-title" value="${escH(base.title||'Homeowner Maintenance Responsibility & Acknowledgment')}"></div></div>
+    <div class="fg"><label class="fl" for="ag-body">Agreement text *</label><textarea class="fi" id="ag-body" style="min-height:320px;font-size:12.5px;line-height:1.55">${escH(base.body||'')}</textarea>
+    <div style="font-size:11px;color:#8f8d86;margin-top:4px">Blank line between paragraphs. A short line starting with a number and a period (like "4. Notifications") becomes a section heading.</div></div>
+    <label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;margin-bottom:6px"><input type="checkbox" id="ag-req" ${(v?v.requires_acceptance:true)?'checked':''} style="margin-top:2px;accent-color:#1c1c1c"><span>Require every homeowner to accept this version. Untick for minor edits that shouldn't force re-acceptance.</span></label>
+    <div class="modal-footer"><button class="btn btn-sm" onclick="cM()">Cancel</button><button class="btn btn-sm" onclick="agrSave(false)">Save Draft</button><button class="btn btn-blk btn-sm" onclick="agrSave(true)">Save &amp; Publish</button></div>`);
+  document.getElementById('modal-inner').style.width='780px';
+}
+async function agrSave(publish){
+  const idRaw=document.getElementById('ag-id').value,version=document.getElementById('ag-ver').value.trim(),title=document.getElementById('ag-title').value.trim(),body=document.getElementById('ag-body').value.trim(),req=document.getElementById('ag-req').checked;
+  if(!version||!title||!body)return alert('Version, title, and text are all required.');
+  if(publish&&!confirm('Publish version '+version+'?\n\nThis is permanent — a published version can never be edited or deleted.'+(req?'\n\nEvery homeowner will be required to accept it the next time they open their portal.':'\n\nHomeowners will NOT be required to re-accept.')))return;
+  const A=DB.agreements,row={version,title,body,requires_acceptance:req};
+  if(sb){
+    const email=await sessionEmail();
+    if(publish){row.published_at=new Date().toISOString();row.published_by=email;}
+    let res;
+    if(idRaw)res=await sb.from('agreement_versions').update(row).eq('id',Number(idRaw)).select().single();
+    else{row.created_by=email;res=await sb.from('agreement_versions').insert(row).select().single();}
+    if(res.error)return alert('Could not save: '+res.error.message);
+    cM();await reloadAgreements();return;
+  }
+  if(A.versions.some(x=>x.version===version&&String(x.id)!==String(idRaw)))return alert('That version label already exists.');
+  if(idRaw){const v=A.versions.find(x=>String(x.id)===String(idRaw));if(v.published_at)return alert('Published versions are permanent.');Object.assign(v,row);if(publish)v.published_at=new Date().toISOString();}
+  else A.versions.push({id:Date.now(),...row,published_at:publish?new Date().toISOString():null});
+  cM();rAgreements();
+}
+async function agrPublishDraft(id){
+  const A=DB.agreements,v=A.versions.find(x=>x.id===id);if(!v)return;
+  if(!confirm('Publish version '+v.version+'?\n\nThis is permanent — a published version can never be edited or deleted.'+(v.requires_acceptance?'\n\nEvery homeowner will be required to accept it the next time they open their portal.':'\n\nHomeowners will NOT be required to re-accept.')))return;
+  if(sb){
+    const email=await sessionEmail();
+    const res=await sb.from('agreement_versions').update({published_at:new Date().toISOString(),published_by:email}).eq('id',id).select().single();
+    if(res.error)return alert('Could not publish: '+res.error.message);
+    await reloadAgreements();return;
+  }
+  v.published_at=new Date().toISOString();rAgreements();
+}
+async function agrDeleteDraft(id){
+  const A=DB.agreements,v=A.versions.find(x=>x.id===id);if(!v||v.published_at)return;
+  if(!confirm('Delete draft version '+v.version+'?'))return;
+  if(sb){const res=await sb.from('agreement_versions').delete().eq('id',id);if(res.error)return alert('Could not delete: '+res.error.message);await reloadAgreements();return;}
+  A.versions=A.versions.filter(x=>x.id!==id);rAgreements();
+}
+
 async function initAdminApp(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
   document.getElementById('sb-signout').style.display=sb?'block':'none';
   await loadAllAdminData();
+  await loadAgreementsAdmin();
   applyBrandingVars();rLogo();
   rSB();rDB();rEM();rVND();rSET();setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
 }
@@ -858,10 +1220,11 @@ function gP(p){
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   const el=document.getElementById('page-'+p);if(el)el.classList.add('active');
   page=p;
-  ['dashboard','emails','vendors','links','settings'].forEach(id=>{const n=document.getElementById('nav-'+id);if(n)n.classList.toggle('active',p===id)});
+  ['dashboard','emails','vendors','links','agreements','settings'].forEach(id=>{const n=document.getElementById('nav-'+id);if(n)n.classList.toggle('active',p===id)});
   if(p==='dashboard')setTB('Projects','Every client home on the program',`<button class="btn btn-blk btn-sm" onclick="gP('add-client')">${ic('plus',12)} New Client</button>`);
   else if(p==='emails')setTB('Email Reminders','Automated reminders via your email service','');
   else if(p==='vendors')setTB('Vendor Directory','Trusted contractors & service providers',`<button class="btn btn-blk btn-sm" onclick="oAddVendor()">${ic('plus',12)} Add Vendor</button>`);
+  else if(p==='agreements'){setTB('Agreements','Homeowner acknowledgment versions and acceptance status','');rAgreements();}
   else if(p==='links'){setTB('Client Links','Every client\'s portal link, PIN, and QR code in one place','');rLinks();}
   else if(p==='settings')setTB('Company Settings','Amazon Associates, branding & defaults','');
   else if(p==='add-client'){acStep=1;acData={tasks:[],links:[],paints:[],equipment:[],warranties:[],homeFiles:[],vendorIds:[]};setTB('Add New Client','Set up a new client portal',`<button class="btn btn-sm" onclick="gP('dashboard')">${ic('x',12)} Cancel</button>`);rAcWiz();}
@@ -885,7 +1248,7 @@ function setView(v){
   else{rCDet(cid);gP('client-detail');setTB(gC(cid).name,gC(cid).address,`<button class="btn btn-tan btn-sm" onclick="setView('client')">${ic('eye',12)} Client View</button> <button class="btn btn-sm" onclick="printRecord(${cid})">${ic('printer',12)} Print Record</button> <button class="btn btn-blk btn-sm" onclick="oAddTask()">${ic('plus',12)} Add Task</button>`);}
 }
 function oM(html){document.getElementById('modal-inner').innerHTML=html;document.getElementById('modal-bg').classList.add('open')}
-function cM(){document.getElementById('modal-bg').classList.remove('open')}
+function cM(){document.getElementById('modal-bg').classList.remove('open');document.getElementById('modal-inner').style.width='';}
 
 // ═══════════════════════════════════════════
 // SIDEBAR — the client list now lives on the Dashboard as project cards,
@@ -1507,7 +1870,7 @@ function showHist(cid2,tid){
 // ═══════════════════════════════════════════
 // CLIENT PORTAL VIEW
 // ═══════════════════════════════════════════
-const PT_TITLES={home:'',tasks:'My Maintenance',reorder:'Reorder Supplies',paint:'Paint & Stain',equip:'Equipment',warranty:'Warranties',files:'Home Files',vendors:'Find a Vendor',notes:'Home Notes'};
+const PT_TITLES={home:'',tasks:'My Maintenance',reorder:'Reorder Supplies',paint:'Paint & Stain',equip:'Equipment',warranty:'Warranties',files:'Home Files',vendors:'Find a Vendor',notes:'Home Notes',legal:'Legal &amp; Acknowledgments'};
 function rPtHero(id,tab){
   const c=gC(id);if(!c)return;
   const title=PT_TITLES[tab]||'';
@@ -1531,7 +1894,7 @@ function openMobileNav(){document.getElementById('sidebar').classList.add('mobil
 function closeMobileNav(){document.getElementById('sidebar').classList.remove('mobile-open');document.getElementById('sidebar-backdrop').classList.remove('mobile-open');}
 function sPT(t){
   ptab=t;
-  ['home','tasks','reorder','paint','equip','warranty','files','vendors','notes'].forEach(id=>{const n=document.getElementById('cnav-'+id);if(n)n.classList.toggle('active',id===t);});
+  ['home','tasks','reorder','paint','equip','warranty','files','vendors','notes','legal'].forEach(id=>{const n=document.getElementById('cnav-'+id);if(n)n.classList.toggle('active',id===t);});
   if(view==='client'){rPtHero(cid,t);rPB(cid,t);}
   closeMobileNav();
 }
@@ -1605,6 +1968,7 @@ function rPB(id,tab){
     const sorted=[...c.tasks].sort((a,b)=>new Date(a.nextDue)-new Date(b.nextDue));
     body.innerHTML=`<div style="padding:18px">
       <div style="font-size:12px;color:#8f8d86;margin-bottom:14px">You'll receive an email reminder ${c.emailRemindDays} days before each item is due. Click <strong>Mark Done</strong> when you complete it — the countdown resets automatically, and we log the date for your records.</div>
+      ${agrMaintenanceNotice()}
       <div class="card" style="padding:0;overflow:hidden">${sorted.map(t=>taskRow(id,t,false)).join('')}</div>
     </div>`;
   }
@@ -1661,6 +2025,18 @@ function rPB(id,tab){
           </div>`;}).join('')}
         ${(c.warranties||[]).length===0?'<div style="padding:20px;font-size:13px;color:#8f8d86;text-align:center">No warranty records added yet.</div>':''}
       </div></div>`;
+  }
+  else if(tab==='legal'){
+    const list=clientAgreements(c);
+    body.innerHTML=`<div style="padding:18px"><div style="font-size:12px;color:#6f6d66;margin-bottom:12px">Agreements you've accepted with ${escH(DB.companySettings.companyName)}. You can view, or save a PDF copy of, exactly what you accepted.</div>
+      ${list.length?list.map((a,i)=>`<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+          <div class="ib" style="background:#eeeeec;width:38px;height:38px">${ic('note',18)}</div>
+          <div style="flex:1;min-width:200px"><div style="font-size:14px;font-weight:700">${escH(a.title)}</div>
+            <div style="font-size:12px;color:#6f6d66;margin-top:2px">Version ${escH(a.version)} · Accepted ${escH(fmtLocalLong(a.acceptedAt))}</div>
+            <div style="font-size:11px;color:#6f6d66">${escH(fmtUtc(a.acceptedAt))}</div></div>
+          <div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="oViewAgreement(${i})">View</button><button class="btn btn-blk btn-sm" onclick="printAgreement(${i})">${ic('printer',12)} Download PDF</button></div>
+        </div></div>`).join(''):`<div class="card" style="text-align:center;color:#6f6d66;font-size:13px">No acknowledgment on file yet.</div>`}
+      <div style="font-size:11px;color:#6f6d66;margin-top:6px">“Download PDF” opens your device's print dialog — choose “Save as PDF”.</div></div>`;
   }
   else if(tab==='files'){ body.innerHTML=`<div style="padding:18px">${rFilesTab(id,'client')}</div>`; }
   else if(tab==='vendors'){
