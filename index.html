@@ -166,6 +166,7 @@ input[type=color]{accent-color:#1c1c1c}
 @media (max-width:760px){.agr-card{padding:16px 14px;border-radius:14px}.agr-scroll{padding:12px}}
 .maint-note{font-size:11px;line-height:1.55;color:#6f6d66;margin:-4px 0 14px;padding:9px 12px;border-left:2px solid #d3d1cb;background:#fcfcfb;border-radius:0 8px 8px 0}
 .maint-note a{color:#1c1c1c;font-weight:700}
+@media (min-width:761px){.pt-bar-empty{display:none!important}}
 @media print{
   #app{display:none!important}
   body{background:#fff}
@@ -1875,12 +1876,11 @@ function rPtHero(id,tab){
   const c=gC(id);if(!c)return;
   const title=PT_TITLES[tab]||'';
   document.getElementById('pt-hero').innerHTML=`
-    <div style="background:#1c1c1c;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:relative;overflow:hidden">
+    <div class="${title?'':'pt-bar-empty'}" style="background:#1c1c1c;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:relative;overflow:hidden">
       <div style="position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none"></div>
       <div style="display:flex;align-items:center;gap:11px;position:relative;z-index:1">
-        <button class="mobile-menu-btn no-print" onclick="openMobileNav()">${ic('menu',16)}</button>
-        <div style="width:27px;height:27px;border:1.5px solid rgba(255,255,255,.32);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;flex-shrink:0">M</div>
-        ${title?`<div style="font-size:15px;font-weight:800;color:#fff">${title}</div>`:`<div style="font-size:10.5px;font-weight:700;color:#9c968a;text-transform:uppercase;letter-spacing:.1em">Home Care Portal</div>`}
+        <button class="mobile-menu-btn no-print" onclick="openMobileNav()" aria-label="Open menu">${ic('menu',16)}</button>
+        ${title?`<div style="font-size:15px;font-weight:800;color:#fff">${title}</div>`:''}
       </div>
       <button class="btn btn-sm no-print" style="background:rgba(255,255,255,.1);color:#fff;border-color:rgba(255,255,255,.2);font-size:11px;${clientOnlyMode?'display:none':''}" onclick="setView('admin')">${ic('arrowleft',11)} Admin</button>
     </div>`;
@@ -2157,29 +2157,38 @@ function printRecord(id){
     </div>`;
   window.print();
 }
-function printQRLabel(id){
+async function printQRLabel(id){
   const c=gC(id);
   const url=portalUrl(c.portalCode);
   if(!url){alert('Set your Portal Base URL in Company Settings first — otherwise this QR code would point to a domain that doesn\'t exist.');gP('settings');return;}
+  const S=DB.companySettings;
   const qr=qrcode(0,'M');
   qr.addData(url);
   qr.make();
   const qrSvg=qr.createSvgTag({cellSize:6,margin:0});
+  // Branding rolls over from Company Settings: the uploaded logo if there is one,
+  // otherwise the company name; the program color becomes the accent line.
+  const accent=/^#[0-9a-f]{3,8}$/i.test(S.programColor||'')?S.programColor:'#1c1c1c';
+  const header=S.logoDataUrl
+    ?`<img id="qr-logo" src="${S.logoDataUrl}" alt="${escH(S.companyName)}" style="max-width:2.7in;max-height:0.85in;object-fit:contain;display:block;margin:0 auto">`
+    :`<div style="font-size:13px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:#1c1c1c">${escH(S.companyName)}</div>`;
   setPrintPageSize('@page{size:4in 6in;margin:0}');
   document.getElementById('print-area').classList.add('qr-label-page');
   document.getElementById('print-area').innerHTML=`
     <div style="width:4in;height:6in;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0.4in;box-sizing:border-box;font-family:'Inter',sans-serif;text-align:center;background:#fff;margin:0 auto">
-      <div style="width:30px;height:30px;border:1.5px solid #1c1c1c;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#1c1c1c;margin-bottom:10px;flex-shrink:0">M</div>
-      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#1c1c1c">${DB.companySettings.companyName}</div>
-      <div style="font-size:9px;color:#8f8d86;margin-top:2px;margin-bottom:20px">Home Care Portal</div>
+      ${header}
+      <div style="font-size:8.5px;color:#6f6d66;letter-spacing:.16em;text-transform:uppercase;font-weight:700;margin-top:10px">Home Care Portal</div>
+      <div style="width:34px;height:2px;background:${accent};margin:12px auto 20px;flex-shrink:0;-webkit-print-color-adjust:exact;print-color-adjust:exact"></div>
       <div style="border:1px solid #e8e6e1;border-radius:10px;padding:10px;background:#fff;width:2.5in;height:2.5in;display:flex;align-items:center;justify-content:center;flex-shrink:0">${qrSvg}</div>
       <div style="margin-top:20px;padding:10px 22px;border:1.5px solid #1c1c1c;border-radius:10px">
-        <div style="font-size:8.5px;color:#8f8d86;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Access PIN</div>
+        <div style="font-size:8.5px;color:#6f6d66;text-transform:uppercase;letter-spacing:.1em;font-weight:700">Access PIN</div>
         <div style="font-size:22px;font-weight:800;color:#1c1c1c;letter-spacing:.15em">${c.pin||'— — — —'}</div>
       </div>
-      <div style="font-size:11px;color:#8f8d86;margin-top:16px;line-height:1.5">Scan the code, then enter the PIN above<br>to view your home's maintenance schedule</div>
-      <div style="font-size:7.5px;color:#b5b3ac;margin-top:14px;word-break:break-all;max-width:2.8in">${url}</div>
+      <div style="font-size:11px;color:#6f6d66;margin-top:16px;line-height:1.5">Scan the code, then enter the PIN above<br>to view your home's maintenance schedule</div>
+      <div style="font-size:7.5px;color:#9c9a93;margin-top:14px;word-break:break-all;max-width:2.8in">${url}</div>
     </div>`;
+  const img=document.getElementById('qr-logo');
+  if(img&&img.decode){try{await img.decode();}catch(e){}}   // make sure the logo is ready before the print dialog opens
   alert('Before printing: in the print dialog, set "Paper size" to 4 x 6 in (or Custom, 4in by 6in). If it stays on Letter or A4, the label will print small and off-center instead of filling the label.');
   window.print();
   setTimeout(()=>setPrintPageSize(''),1500);
